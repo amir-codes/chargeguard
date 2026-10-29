@@ -5,7 +5,7 @@ Tick each box when its done criteria in `BATTERY_APP_PROMPT.md` section 13 are m
 ## Part A (Windows): write everything, push
 
 - [x] A0 Setup and repo: .gitattributes, .gitignore, CLAUDE.md, this plan, private GitHub repo, first push
-- [ ] A1 Core: models, policy engine, calibration and schedule state machines, backend selection, codec, simulated backend, powermetrics parser, unit tests
+- [x] A1 Core: models, policy engine, calibration and schedule state machines, backend selection, codec, simulated backend, powermetrics parser, unit tests
 - [ ] A2 System: SMC client, battery reader, assertions, pmset wrapper, observers
 - [ ] A3 Helper: XPC service, client validation, control loop, persistence, restore paths, SMAppService plist, install and uninstall scripts
 - [ ] A4 App: menu bar pop-up, Settings, Dashboard with Sankey, icon sets, notifications, App Intents, first-run wizard, --simulate
