@@ -30,3 +30,23 @@ Logic to double-check against the brief while tests run:
 - ACLC `00` = system default is unconfirmed (battery.sh says so). Verify the LED goes back to normal.
 - Firmware limit keys (bfF0/bfD0/bfE0) are not expected on the M2 with macOS 15.5. Record the probe.
 - PowermetricsParser fixtures are hand-written from the documented format. Capture real output (`sudo powermetrics --samplers tasks --show-process-energy -i 1000 -n 1` and the same with `-f plist`) and adjust the parser and the fixtures if the columns or plist keys differ (`energy_impact`, `energy_impact_per_s`, `cputime_ms_per_s`, `pid`, `name`).
+
+## ChargeGuardSystem (Packages/ChargeGuardSystem)
+
+Two targets: `ChargeGuardSystem` (IOKit, Security; used by the daemon, chargectl and the app) and `ChargeGuardSessionKit` (AppKit/NSWorkspace; app only, so the root daemon never links AppKit).
+
+Uncertain APIs:
+- `AppleSMC`: `IOConnectCallStructMethod(connection, 2, &input, stride, &output, &outputSize)` with inout-to-raw-pointer conversion. `AppleSMC.layoutProblem()` checks the 80-byte layout; `swift test` in this package runs it (`testParamStructLayout`). If it fails, fix the struct before anything else.
+- `kIOReturnNotPrivileged` and the `kIOMessage...` sleep message values are spelled out as constants (0xE00002C1, 0xE0000270/280/290/300) because those macros may not import into Swift.
+- IOPM assertion type names are string literals ("PreventUserIdleSystemSleep", "PreventUserIdleDisplaySleep", "PreventSystemSleep").
+- `IOPSNotificationCreateRunLoopSource` and `IORegisterForSystemPower` use `@convention(c)` closures with `Unmanaged` context; check the closure types compile (`IOPowerSourceCallbackType`, `IOServiceInterestCallback`).
+- `proc_listallpids`, `proc_name`, `proc_pidpath`, `proc_pid_rusage` come from `import Darwin` (libproc). If they do not resolve, add a bridging module map for `<libproc.h>`.
+- `rusage_info_v4.ri_billed_energy` and the user/system times are in Mach ticks on Apple silicon; RusageSampler converts with `mach_timebase_info`. Check that the numbers look sane.
+- `ConsoleUser.uid()` uses `stat("/dev/console")`. `launchctl asuser <uid> launchctl list` (root only) lists the GUI domain, where the battery CLI's LaunchAgent (`com.battery.app`) lives.
+- `FileStateStore` writes state.json atomically and appends JSON lines with rotation at 2 MB.
+
+Hardware checks:
+- `AC-W` (adapter present), `PDTR` (input power, W) and `PPBR` (battery power) are read-only telemetry keys taken from batt's key list. Record whether they exist in docs/SMC-KEYS.md. They are never written.
+- `PowerTelemetryData` (`SystemPowerIn`, `SystemLoad`, in mW) inside AppleSmartBattery: confirm the keys and units with `ioreg -rn AppleSmartBattery`.
+- Temperature: `BatteryRegistryParser.celsius` reads hundredths of a degree Celsius. Compare with `ioreg -rn AppleSmartBattery | grep Temperature` and a known reading.
+- `MachineInfo.firmwareVersion()` reads `boot_rom_version` from `system_profiler SPHardwareDataType -json` (shown as "System Firmware Version").
