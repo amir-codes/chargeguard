@@ -138,9 +138,24 @@ public struct KeepAwakeRequest: Codable, Equatable, Sendable {
         self.preventDisplaySleep = preventDisplaySleep
     }
 
-    public static let presets: [(title: String, seconds: TimeInterval)] = [
-        ("30 minutes", 30 * 60), ("1 hour", 3600), ("2 hours", 7200), ("4 hours", 14_400),
+    public static let presets: [KeepAwakePreset] = [
+        KeepAwakePreset(title: "30 minutes", seconds: 30 * 60),
+        KeepAwakePreset(title: "1 hour", seconds: 3600),
+        KeepAwakePreset(title: "2 hours", seconds: 7200),
+        KeepAwakePreset(title: "4 hours", seconds: 14_400),
     ]
+}
+
+/// A Sleep Control menu entry.
+public struct KeepAwakePreset: Hashable, Identifiable, Sendable {
+    public let title: String
+    public let seconds: TimeInterval
+    public var id: TimeInterval { seconds }
+
+    public init(title: String, seconds: TimeInterval) {
+        self.title = title
+        self.seconds = seconds
+    }
 }
 
 public struct KeepAwakeState: Codable, Equatable, Sendable {
