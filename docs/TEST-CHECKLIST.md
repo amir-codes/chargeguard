@@ -30,14 +30,14 @@ Read all of them at once with `for k in CHTE CH0B CH0C CHIE CH0J CH0I ACLC; do c
 
 ### 0.1 Read-only probe (B2)
 - [ ] Preconditions: app built, helper not yet installed, AlDente quit.
-- [ ] Steps: `build/chargectl probe --direct` (no sudo, no helper; reads only). Paste output into docs/SMC-KEYS.md.
-- [ ] Expected: every key from SMCKey.probeKeys listed as present or absent with size and type. No writes are possible: the helper is not installed and `--direct` only writes for `restore` under sudo.
-- Result: ____ Date: ____
+- [x] Steps: `build/chargectl probe --direct` (no sudo, no helper; reads only). Paste output into docs/SMC-KEYS.md.
+- [x] Expected: every key from SMCKey.probeKeys listed as present or absent with size and type. No writes are possible: the helper is not installed and `--direct` only writes for `restore` under sudo.
+- Result: **hardware**. All 13 probe keys answered: CHTE/CH0B/CH0C/CHIE/CH0J/CH0I/ACLC/AC-W/PDTR/PPBR present, bfF0/bfD0/bfE0 absent (see docs/SMC-KEYS.md). Date: 2026-10-30
 
 ### 0.2 Live battery data without the helper (B2)
-- [ ] Steps: launch ChargeGuard. Compare the pop-up with `ioreg -rn AppleSmartBattery` and the macOS battery menu.
-- [ ] Expected: percentage, hardware percentage, temperature, voltage, amperage, cycle count match. State line says the helper is not running.
-- Result: ____ Date: ____
+- [x] Steps: launch ChargeGuard. Compare the pop-up with `ioreg -rn AppleSmartBattery` and the macOS battery menu.
+- [x] Expected: percentage, hardware percentage, temperature, voltage, amperage, cycle count match. State line says the helper is not running.
+- Result: **hardware (data path)**. `build/ChargeGuard.app` launched and stayed up with no crash report; its reader is the same `BatteryReader` that `chargectl status --direct` uses, whose output matched ioreg exactly (66 %, hardware 62.7 %, 30.5 °C, 11.54 V, −1384 mA, 344 cycles, no helper). The pop-up itself could not be looked at: this Part B session has no Screen Recording or Accessibility permission (screencapture returns only the wallpaper, AppleScript is refused), so visual checks of the UI are recorded as "data path" throughout and should be eyeballed once by the user. Date: 2026-10-30
 
 ### 0.3 Helper install (B3, confirmation 2)
 - [ ] Steps: first-run window → Install helper → approve in System Settings > General > Login Items. Fallback (only if SMAppService fails; never both): `make install-helper`, or `sudo scripts/install-helper.sh "$PWD/build/ChargeGuard.app"`.
