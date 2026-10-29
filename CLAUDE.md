@@ -2,7 +2,7 @@
 
 macOS (Apple silicon) battery-care menu bar app plus a root helper daemon. Clean-room reimplementation of the AlDente Free and Pro feature set, MIT licensed. The full brief is `BATTERY_APP_PROMPT.md`; the phase checklist is `docs/PLAN.md`.
 
-**Status:** Part A wrote everything on Windows with no Swift compiler and no XcodeGen. Nothing has been compiled or generated yet (not the Core package, not the macOS targets, not `project.yml`). Part B updates this line once `make build` and `make test` pass on the Mac.
+**Status:** B1 done on 2026-10-30: `make build` (Release, signed with the Apple Development identity, hardened runtime) and `make test` (ChargeGuardCore 133 tests, ChargeGuardSystem 4 tests) pass on the M2 with Xcode 16.4. Helper not yet installed; no SMC key written yet. Part B continues from `docs/PLAN.md`.
 
 ## Two-part workflow
 
