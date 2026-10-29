@@ -9,7 +9,7 @@ Tick each box when its done criteria in `BATTERY_APP_PROMPT.md` section 13 are m
 - [x] A2 System: SMC client, battery reader, assertions, pmset wrapper, observers
 - [x] A3 Helper: XPC service, client validation, control loop, persistence, restore paths, SMAppService plist, install and uninstall scripts
 - [x] A4 App: menu bar pop-up, Settings, Dashboard with Sankey, icon sets, notifications, App Intents, first-run wizard, --simulate
-- [ ] A5 Tooling and docs: chargectl, project.yml, Makefile, SAFETY, TEST-CHECKLIST, SMC-KEYS template, THIRD_PARTY_NOTICES, LICENSE, README
+- [x] A5 Tooling and docs: chargectl, project.yml, Makefile, SAFETY, TEST-CHECKLIST, SMC-KEYS template, THIRD_PARTY_NOTICES, LICENSE, README
 - [ ] A6 Self-review, MAC-BUILD-NOTES complete, PART-A-DONE written, Part B commands printed
 
 ## Part B (Mac): compile, install, verify on hardware, push
