@@ -50,3 +50,16 @@ Hardware checks:
 - `PowerTelemetryData` (`SystemPowerIn`, `SystemLoad`, in mW) inside AppleSmartBattery: confirm the keys and units with `ioreg -rn AppleSmartBattery`.
 - Temperature: `BatteryRegistryParser.celsius` reads hundredths of a degree Celsius. Compare with `ioreg -rn AppleSmartBattery | grep Temperature` and a known reading.
 - `MachineInfo.firmwareVersion()` reads `boot_rom_version` from `system_profiler SPHardwareDataType -json` (shown as "System Firmware Version").
+
+## ChargeGuardHelper (root daemon)
+
+- Entry point `ChargeGuardHelper/main.swift` (top-level code, `RunLoop.main.run()`). Needs `CREATE_INFOPLIST_SECTION_IN_BINARY = YES` so `Bundle.main.infoDictionary` has the version and the code signature carries the identifier `com.amir.chargeguard.helper`.
+- Client validation (`ClientValidator.swift`): the audit token is read with KVC (`connection.value(forKey: "auditToken")`), which is private API used by most privileged helpers. If it returns nil, the code falls back to the pid (racy, logged). `NSXPCConnection.setCodeSigningRequirement` (macOS 13+) is also applied when a Team ID exists.
+- With ad-hoc signing there is no Team ID; validation falls back to the identifier prefix plus the executable path (`.../ChargeGuard.app/Contents/MacOS/ChargeGuard` or a binary named `chargectl`). Logged as weaker.
+- `SecCSFlags(rawValue: kSecCSSigningInformation)`: if the constant's type does not match, use `SecCSFlags(rawValue: 1 << 1)`.
+- SMAppService daemon plist: `ChargeGuardHelper/com.amir.chargeguard.helper.plist`, copied to `Contents/Library/LaunchDaemons/`; `BundleProgram` = `Contents/MacOS/ChargeGuardHelper`. Open questions to check on the Mac:
+  - Does `SMAppService.daemon(...).register()` work with an ad-hoc signed app? If it fails (often error 1 "Operation not permitted" or the job is blocked), use `make install-helper` (scripts/install-helper.sh) during development.
+  - Registration remembers the app's location: move ChargeGuard.app to /Applications before registering.
+  - Do not use both install paths at once: they share the launchd label. `install-helper.sh` boots out an existing job first.
+- The daemon follows sleep with `IORegisterForSystemPower` (it cannot use NSWorkspace). `systemWillSleep` blocks the power change until the pre-sleep tick has written the keys.
+- SIGTERM/SIGINT run `controller.shutdown`, which restores normal charging when ChargeGuard left keys modified, releases assertions and restores `pmset disablesleep`, then exits 0. `KeepAlive` is true, so launchd restarts the helper after a crash; on start it finds `keysDirty` and either keeps enforcing or restores (restore-on-quit mode or control off).
