@@ -68,7 +68,10 @@ public enum FourCC {
 /// Hex formatting used in logs, probe output and docs ("01000000").
 public enum Hex {
     public static func string(_ bytes: [UInt8]) -> String {
-        bytes.map { String(format: "%02x", $0) }.joined()
+        bytes.map { byte -> String in
+            let digits = String(byte, radix: 16)
+            return digits.count < 2 ? "0" + digits : digits
+        }.joined()
     }
 
     public static func bytes(_ hex: String) -> [UInt8]? {
@@ -94,7 +97,8 @@ public enum SMCValueDecoder {
         switch type {
         case "flt ":
             guard bytes.count == 4 else { return nil }
-            let bits = UInt32(bytes[0]) | UInt32(bytes[1]) << 8 | UInt32(bytes[2]) << 16 | UInt32(bytes[3]) << 24
+            let b0 = UInt32(bytes[0]), b1 = UInt32(bytes[1]) << 8, b2 = UInt32(bytes[2]) << 16, b3 = UInt32(bytes[3]) << 24
+            let bits: UInt32 = b0 | b1 | b2 | b3
             return Double(Float(bitPattern: bits))
         case "ui8 ", "flag":
             guard bytes.count >= 1 else { return nil }
@@ -110,7 +114,9 @@ public enum SMCValueDecoder {
             return Double(Int16(bitPattern: UInt16(bytes[0]) << 8 | UInt16(bytes[1])))
         case "ui32":
             guard bytes.count == 4 else { return nil }
-            return Double(UInt32(bytes[0]) << 24 | UInt32(bytes[1]) << 16 | UInt32(bytes[2]) << 8 | UInt32(bytes[3]))
+            let b0 = UInt32(bytes[0]) << 24, b1 = UInt32(bytes[1]) << 16, b2 = UInt32(bytes[2]) << 8, b3 = UInt32(bytes[3])
+            let value: UInt32 = b0 | b1 | b2 | b3
+            return Double(value)
         case "sp78":
             guard bytes.count == 2 else { return nil }
             return Double(Int16(bitPattern: UInt16(bytes[0]) << 8 | UInt16(bytes[1]))) / 256

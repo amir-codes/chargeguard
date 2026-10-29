@@ -122,6 +122,7 @@ struct HeatSettingsTab: View {
                     LabeledContent("Resume when cooler by", value: String(format: "%.1f °C", heat.resumeDeltaC))
                 }
                 .accessibilityLabel("Resume temperature difference")
+                .accessibilityValue(String(format: "%.1f degrees Celsius", heat.resumeDeltaC))
             } header: {
                 Text("Heat Protection")
             } footer: {

@@ -63,24 +63,24 @@ enum StatusIconRenderer {
         } else if let symbol = badgeSymbol(for: kind) {
             let badgeColor: NSColor = colored ? (filled ? NSColor.labelColor : tint) : NSColor.black
             if filled && !colored {
-                // Knock the badge out of the template fill so it stays readable.
-                NSGraphicsContext.current?.compositingOperation = .destinationOut
-                drawSymbol(symbol, in: body.insetBy(dx: 4, dy: 1), color: .black, pointSize: 8)
-                NSGraphicsContext.current?.compositingOperation = .sourceOver
+                // Knock the badge out of the template fill so it stays readable. NSImage.draw(in:)
+                // always uses .sourceOver, so the operation is passed to draw(in:from:operation:fraction:).
+                drawSymbol(symbol, in: body.insetBy(dx: 4, dy: 1), color: .black, pointSize: 8, operation: .destinationOut)
             } else {
                 drawSymbol(symbol, in: body.insetBy(dx: 4, dy: 1), color: badgeColor, pointSize: 8)
             }
         }
     }
 
-    private static func drawSymbol(_ name: String, in rect: NSRect, color: NSColor, pointSize: CGFloat) {
+    private static func drawSymbol(_ name: String, in rect: NSRect, color: NSColor, pointSize: CGFloat,
+                                   operation: NSCompositingOperation = .sourceOver) {
         let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .bold)
             .applying(NSImage.SymbolConfiguration(paletteColors: [color]))
         guard let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(configuration) else { return }
         let symbolSize = symbol.size
         let origin = NSPoint(x: rect.midX - symbolSize.width / 2, y: rect.midY - symbolSize.height / 2)
-        symbol.draw(in: NSRect(origin: origin, size: symbolSize))
+        symbol.draw(in: NSRect(origin: origin, size: symbolSize), from: .zero, operation: operation, fraction: 1)
     }
 
     /// Small glyph inside the battery for each state.

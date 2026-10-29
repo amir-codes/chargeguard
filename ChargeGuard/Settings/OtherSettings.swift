@@ -1,4 +1,3 @@
-import AppIntents
 import AppKit
 import SwiftUI
 import ChargeGuardCore
@@ -40,12 +39,13 @@ struct ShortcutsSettingsTab: View {
             }
 
             Section {
+                // ShortcutsLink (AppIntents) is not available on macOS, so a plain button opens the app.
                 HStack {
-                    ShortcutsLink()
                     Spacer()
                     Button("Open Shortcuts") {
                         if let url = URL(string: "shortcuts://") { NSWorkspace.shared.open(url) }
                     }
+                    .accessibilityHint("Opens the Shortcuts app, where ChargeGuard's actions are listed")
                 }
             }
         }

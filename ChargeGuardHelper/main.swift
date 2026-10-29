@@ -75,6 +75,28 @@ let service = HelperService(controller: controller, logger: logger,
 controller.onStatus = { status in service.broadcast(status: status) }
 controller.onEvents = { events in service.broadcast(events: events) }
 
+// Restore normal charging on SIGTERM (launchctl bootout, uninstall, shutdown) and SIGINT.
+// Installed before anything can write keys. The handler runs on the main queue (served by the main
+// run loop below); `shutdown` restores on the controller queue and exits from there, so no tick or
+// request can run between the restore and exit(0).
+var signalSources: [DispatchSourceSignal] = []
+for sig in [SIGTERM, SIGINT] {
+    signal(sig, SIG_IGN)
+    let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
+    source.setEventHandler {
+        logger.notice(LogCategory.controller, "signal \(sig): restoring normal charging and exiting")
+        controller.shutdown(reason: sig == SIGTERM ? "SIGTERM" : "SIGINT") {
+            exit(0)
+        }
+    }
+    source.resume()
+    signalSources.append(source)
+}
+
+// Start (load state, probe, stale-state restore) before the listener accepts clients: the controller
+// queue is serial, so every request is handled after the saved state has been loaded.
+controller.start()
+
 let listener = NSXPCListener(machServiceName: HelperProtocol.machServiceName)
 listener.delegate = service
 listener.resume()
@@ -90,20 +112,4 @@ if !systemPower.start() {
 let powerSource = PowerSourceObserver { controller.powerSourceChanged() }
 powerSource.start()
 
-// Restore normal charging on SIGTERM (launchctl bootout, uninstall, shutdown) and SIGINT.
-var signalSources: [DispatchSourceSignal] = []
-for sig in [SIGTERM, SIGINT] {
-    signal(sig, SIG_IGN)
-    let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
-    source.setEventHandler {
-        logger.notice(LogCategory.controller, "signal \(sig): restoring normal charging and exiting")
-        controller.shutdown(reason: sig == SIGTERM ? "SIGTERM" : "SIGINT") {
-            exit(0)
-        }
-    }
-    source.resume()
-    signalSources.append(source)
-}
-
-controller.start()
 RunLoop.main.run()

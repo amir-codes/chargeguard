@@ -56,7 +56,7 @@ public final class SystemPowerObserver {
         case Self.systemWillSleep:
             if let willSleep {
                 let port = rootPort
-                willSleep { IOAllowPowerChange(port, notificationID) }
+                willSleep { _ = IOAllowPowerChange(port, notificationID) }
             } else {
                 IOAllowPowerChange(rootPort, notificationID)
             }

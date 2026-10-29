@@ -22,8 +22,8 @@ public struct KeyProbeEntry: Codable, Equatable, Sendable {
         guard present, let info else {
             return "\(pad) absent\(error.map { "  (\($0))" } ?? "")"
         }
-        let value = value.map { Hex.string($0) } ?? "unreadable"
-        return "\(pad) present  size \(info.size)  type '\(info.type)'  value \(value)"
+        let shown = self.value.map { Hex.string($0) } ?? "unreadable"
+        return "\(pad) present  size \(info.size)  type '\(info.type)'  value \(shown)"
     }
 }
 

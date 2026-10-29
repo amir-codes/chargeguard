@@ -72,7 +72,7 @@ struct BatteryStatusEntity: AppEntity {
     }
 
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(percentage) %", subtitle: "\(state)")
+        DisplayRepresentation(title: "\(percentage) percent", subtitle: "\(state)")
     }
 
     var summary: String {
@@ -166,14 +166,14 @@ struct SetChargeLimitIntent: AppIntent {
     var limit: Int
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Set the charge limit to \(\.$limit) %")
+        Summary("Set the charge limit to \(\.$limit) percent")
     }
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let value = min(100, max(20, limit))
         try await IntentSupport.send(.setChargeLimit(value))
-        return .result(dialog: IntentDialog("Charge limit set to \(value) %."))
+        return .result(dialog: IntentDialog("Charge limit set to \(value) percent."))
     }
 }
 
@@ -232,19 +232,19 @@ struct ToggleSailingIntent: AppIntent {
 
 struct TopUpIntent: AppIntent {
     static let title: LocalizedStringResource = "Top Up"
-    static let description: IntentDescription? = IntentDescription("Charges to 100 % once, then returns to the charge limit when fully charged or unplugged.")
+    static let description: IntentDescription? = IntentDescription("Charges to 100 percent once, then returns to the charge limit when fully charged or unplugged.")
     static let openAppWhenRun: Bool = false
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         try await IntentSupport.send(.startTopUp)
-        return .result(dialog: "Topping up to 100 %.")
+        return .result(dialog: "Topping up to 100 percent.")
     }
 }
 
 struct StartCalibrationIntent: AppIntent {
     static let title: LocalizedStringResource = "Start Calibration"
-    static let description: IntentDescription? = IntentDescription("Starts battery calibration: charge to 100 % and hold, discharge, charge to 100 % and hold, then restore the limit.")
+    static let description: IntentDescription? = IntentDescription("Starts battery calibration: charge to 100 percent and hold, discharge, charge to 100 percent and hold, then restore the limit.")
     static let openAppWhenRun: Bool = false
 
     @MainActor

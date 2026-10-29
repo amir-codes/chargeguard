@@ -1,5 +1,18 @@
 import Foundation
 
+/// A lock-protected value shared with escaping closures (Dispatch, XPC reply blocks).
+final class LockedBox<Value> {
+    private let lock = NSLock()
+    private var stored: Value
+
+    init(_ value: Value) { stored = value }
+
+    var value: Value {
+        get { lock.lock(); defer { lock.unlock() }; return stored }
+        set { lock.lock(); stored = newValue; lock.unlock() }
+    }
+}
+
 public struct ProcessResult: Sendable {
     public var status: Int32
     public var stdout: String
@@ -41,30 +54,36 @@ public final class ProcessRunner {
             throw ProcessRunnerError.launchFailed(path, "\(error)")
         }
 
-        var timedOut = false
+        // Boxes instead of captured `var`s: Dispatch closures may be @Sendable, and mutating a captured
+        // var there is an error.
+        let timedOut = LockedBox(false)
         let timer = DispatchWorkItem {
-            if process.isRunning {
-                timedOut = true
-                process.terminate()
+            guard process.isRunning else { return }
+            timedOut.value = true
+            process.terminate()
+            // SIGKILL if SIGTERM is ignored, so a hung tool cannot block the caller (the control queue) forever.
+            let pid = process.processIdentifier
+            DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
+                if process.isRunning { kill(pid, SIGKILL) }
             }
         }
         DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timer)
 
-        var errData = Data()
+        let errData = LockedBox(Data())
         let errGroup = DispatchGroup()
         errGroup.enter()
         DispatchQueue.global().async {
-            errData = err.fileHandleForReading.readDataToEndOfFile()
+            errData.value = err.fileHandleForReading.readDataToEndOfFile()
             errGroup.leave()
         }
         let outData = out.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         errGroup.wait()
         timer.cancel()
-        if timedOut { throw ProcessRunnerError.timedOut(path) }
+        if timedOut.value { throw ProcessRunnerError.timedOut(path) }
         return ProcessResult(status: process.terminationStatus,
                              stdout: String(decoding: outData, as: UTF8.self),
-                             stderr: String(decoding: errData, as: UTF8.self),
+                             stderr: String(decoding: errData.value, as: UTF8.self),
                              stdoutData: outData)
     }
 

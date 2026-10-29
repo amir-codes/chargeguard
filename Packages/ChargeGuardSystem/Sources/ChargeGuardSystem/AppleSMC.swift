@@ -129,7 +129,10 @@ public final class AppleSMC: SMCKeyIO {
         return withUnsafeBytes(of: output.bytes) { Array($0.prefix(size)) }
     }
 
+    /// Raw write. Call it only through `GuardedSMCWriter`; as a second line of defence it refuses any key
+    /// outside the section 5 table.
     public func write(_ key: String, bytes: [UInt8]) throws {
+        guard SMCKey.writableKeys.contains(key) else { throw SMCError.invalidKey(key) }
         lock.lock(); defer { lock.unlock() }
         let info = try keyInfoLocked(key)
         guard bytes.count == info.size, bytes.count <= 32 else {

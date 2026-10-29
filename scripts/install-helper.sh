@@ -34,13 +34,23 @@ if [[ ! -x "$HELPER_SRC" ]]; then
     exit 1
 fi
 
-if launchctl print "system/$LABEL" >/dev/null 2>&1; then
+# Captured into a variable (not piped into grep -q): with pipefail, grep -q exiting early can make
+# launchctl die of SIGPIPE and turn a match into a failure.
+JOB_INFO="$(launchctl print "system/$LABEL" 2>/dev/null || true)"
+if [[ -n "$JOB_INFO" ]]; then
+    if [[ "$JOB_INFO" == *".app/Contents/MacOS/ChargeGuardHelper"* ]]; then
+        echo "The helper is already installed through the app (SMAppService, System Settings > Login Items)." >&2
+        echo "Use one install path, not both: they share the label $LABEL." >&2
+        echo "Remove it first with ChargeGuard > Settings > Advanced > Uninstall helper, or: sudo $(dirname "$0")/uninstall.sh" >&2
+        exit 1
+    fi
     echo "Stopping the running helper (it restores normal charging on SIGTERM)..."
     launchctl bootout "system/$LABEL" 2>/dev/null || true
     sleep 1
 fi
 
-install -d -m 755 -o root -g wheel /Library/PrivilegedHelperTools
+# `install -d` would also re-own and re-mode an existing directory, so only create missing ones.
+[[ -d /Library/PrivilegedHelperTools ]] || install -d -m 755 -o root -g wheel /Library/PrivilegedHelperTools
 install -m 755 -o root -g wheel "$HELPER_SRC" "$HELPER_DEST"
 
 cat > "$PLIST" <<PLIST_EOF
@@ -59,6 +69,10 @@ cat > "$PLIST" <<PLIST_EOF
 		<key>$LABEL</key>
 		<true/>
 	</dict>
+	<key>AssociatedBundleIdentifiers</key>
+	<array>
+		<string>com.amir.chargeguard</string>
+	</array>
 	<key>RunAtLoad</key>
 	<true/>
 	<key>KeepAlive</key>
@@ -71,13 +85,17 @@ PLIST_EOF
 chown root:wheel "$PLIST"
 chmod 644 "$PLIST"
 
-launchctl bootstrap system "$PLIST"
+plutil -lint "$PLIST" >/dev/null
+
+# enable before bootstrap: a label left disabled by an earlier `launchctl disable` cannot be bootstrapped.
 launchctl enable "system/$LABEL"
-launchctl kickstart -k "system/$LABEL"
+launchctl bootstrap system "$PLIST"
+# RunAtLoad already started it; kickstart (without -k) only starts it if it is not running.
+launchctl kickstart "system/$LABEL" 2>/dev/null || true
 
 if [[ -x "$CHARGECTL_SRC" ]]; then
-    install -d -m 755 /usr/local/bin
-    install -m 755 "$CHARGECTL_SRC" /usr/local/bin/chargectl
+    [[ -d /usr/local/bin ]] || install -d -m 755 -o root -g wheel /usr/local/bin
+    install -m 755 -o root -g wheel "$CHARGECTL_SRC" /usr/local/bin/chargectl
     echo "Installed /usr/local/bin/chargectl"
 fi
 

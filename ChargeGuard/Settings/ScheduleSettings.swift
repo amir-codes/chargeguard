@@ -143,6 +143,7 @@ struct ScheduleSettingsTab: View {
                     set: { setEnabled(rule.id, $0) }
                 ))
                 .labelsHidden()
+                .disabled(!(model.isConnected || model.simulated))
                 .accessibilityLabel("Rule enabled")
             }
             .width(34)
@@ -168,11 +169,18 @@ struct ScheduleSettingsTab: View {
             if let id = ids.first, let rule = rules.first(where: { $0.id == id }) {
                 Button("Edit…") { editing = ScheduleEditTarget(rule: rule, isNew: false) }
             }
-            Button("Delete", role: .destructive) { delete(ids) }
+            if !ids.isEmpty {
+                Button("Delete", role: .destructive) { delete(ids) }
+            }
         } primaryAction: { ids in
             if let id = ids.first, let rule = rules.first(where: { $0.id == id }) {
                 editing = ScheduleEditTarget(rule: rule, isNew: false)
             }
+        }
+        // Keyboard: the Delete key removes the selected rule, like the Delete button.
+        .onDeleteCommand {
+            guard model.isConnected || model.simulated, let id = selection else { return }
+            delete([id])
         }
         .frame(minHeight: 240)
         .accessibilityLabel("Schedule rules")

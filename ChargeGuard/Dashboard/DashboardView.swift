@@ -65,7 +65,7 @@ struct DashboardView: View {
                 }
                 Text(model.stateLine).font(.headline)
                 if let status = model.status {
-                    Text("Limit \(status.effectiveLimit) % · \(status.backend.displayName)\(status.simulated ? " · Simulation" : "")")
+                    Text(limitLine(status))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -82,6 +82,12 @@ struct DashboardView: View {
             .accessibilityLabel("Refresh the dashboard")
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private func limitLine(_ status: DaemonStatus) -> String {
+        var line = "Limit \(status.effectiveLimit) % · \(status.backend.displayName)"
+        if status.simulated { line += " · Simulation" }
+        return line
     }
 
     // MARK: Sections

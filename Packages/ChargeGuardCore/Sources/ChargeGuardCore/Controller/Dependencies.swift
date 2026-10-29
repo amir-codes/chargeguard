@@ -141,8 +141,10 @@ public struct ControllerDependencies {
                                  calendar: Calendar = Calendar.current) -> (ControllerDependencies, SimulatedBattery) {
         let smc = SimulatedSMC(profile: profile)
         let battery = SimulatedBattery(smc: smc, clock: clock, charge: charge, script: script)
+        // One object plays `pmset` for both Low Power Mode and SleepDisabled, like the real wrapper.
+        let power = SimulatedPowerSettings()
         let deps = ControllerDependencies(smc: smc, battery: battery, assertions: RecordingAssertions(),
-                                          lowPowerMode: SimulatedPowerSettings(), sleepDisable: SimulatedPowerSettings(),
+                                          lowPowerMode: power, sleepDisable: power,
                                           store: InMemoryStateStore(), conflicts: StaticConflictScanner(),
                                           energy: SimulatedEnergySampler(clock: clock), lid: SimulatedLid(),
                                           clock: clock, calendar: calendar, logger: logger, simulated: true,
@@ -217,7 +219,12 @@ public final class SimulatedEnergySampler: EnergySampling {
     public init(clock: TimeSource) { self.clock = clock }
     public func sample() -> EnergySample {
         let t = clock.now.timeIntervalSince1970
-        let wobble = { (phase: Double) in 1 + 0.3 * sin(t / 37 + phase) }
+        // Triangle wave in 0.7...1.3. Plain arithmetic, so no C math library is needed on any platform.
+        let wobble = { (phase: Double) -> Double in
+            let x = (t / 37 + phase).truncatingRemainder(dividingBy: 4)
+            let triangle = x < 2 ? x - 1 : 3 - x
+            return 1 + 0.3 * triangle
+        }
         let processes = [
             ProcessEnergy(pid: 4101, name: "Safari", energy: 18.4 * wobble(0), cpuMsPerSecond: 120),
             ProcessEnergy(pid: 4102, name: "Xcode", energy: 12.1 * wobble(1), cpuMsPerSecond: 95),

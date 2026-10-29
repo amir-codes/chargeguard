@@ -4,7 +4,7 @@ Run on the M2 MacBook, macOS 15.5 (24F74), one item at a time, in phase order (B
 
 ## Conventions
 
-- `chargectl` means the installed `/usr/local/bin/chargectl` or `build/chargectl`.
+- `chargectl` means the installed `/usr/local/bin/chargectl` or `build/chargectl`. Without `--direct` it talks to the helper, so before the helper is installed (0.1, 0.2) use `--direct`.
 - "Key table": fill in only the keys `chargectl probe` reported as present; write `—` for absent keys.
 - Before each test: `chargectl status` shows `backend`, `conflicts: none`, charge control enabled (except where stated).
 - Emergency: `chargectl restore`, `sudo chargectl restore --direct`, or reboot (see docs/SAFETY.md).
@@ -22,7 +22,7 @@ Key table template (copy for each test):
 | CH0I | | | |
 | ACLC | | | |
 
-Read all of them at once with `for k in CHTE CH0B CH0C CHIE CH0J CH0I ACLC; do chargectl read $k; done`.
+Read all of them at once with `for k in CHTE CH0B CH0C CHIE CH0J CH0I ACLC; do chargectl read $k --direct; done` (`--direct` reads work with or without the helper).
 
 ---
 
@@ -30,8 +30,8 @@ Read all of them at once with `for k in CHTE CH0B CH0C CHIE CH0J CH0I ACLC; do c
 
 ### 0.1 Read-only probe (B2)
 - [ ] Preconditions: app built, helper not yet installed, AlDente quit.
-- [ ] Steps: `chargectl probe` (no sudo; reads only). Paste output into docs/SMC-KEYS.md.
-- [ ] Expected: every key from SMCKey.probeKeys listed as present or absent with size and type. No writes (`chargectl writes` empty).
+- [ ] Steps: `build/chargectl probe --direct` (no sudo, no helper; reads only). Paste output into docs/SMC-KEYS.md.
+- [ ] Expected: every key from SMCKey.probeKeys listed as present or absent with size and type. No writes are possible: the helper is not installed and `--direct` only writes for `restore` under sudo.
 - Result: ____ Date: ____
 
 ### 0.2 Live battery data without the helper (B2)
@@ -40,8 +40,8 @@ Read all of them at once with `for k in CHTE CH0B CH0C CHIE CH0J CH0I ACLC; do c
 - Result: ____ Date: ____
 
 ### 0.3 Helper install (B3, confirmation 2)
-- [ ] Steps: first-run window → Install helper → approve in System Settings > General > Login Items. Fallback: `sudo scripts/install-helper.sh build/ChargeGuard.app`.
-- [ ] Expected: `launchctl print system/com.amir.chargeguard.helper` shows it running; `chargectl status` answers; `chargectl version` shows matching protocol versions. Charge control is still **off**; `chargectl writes` is empty.
+- [ ] Steps: first-run window → Install helper → approve in System Settings > General > Login Items. Fallback (only if SMAppService fails; never both): `make install-helper`, or `sudo scripts/install-helper.sh "$PWD/build/ChargeGuard.app"`.
+- [ ] Expected: `sudo launchctl print system/com.amir.chargeguard.helper` shows it running; `chargectl status` answers; the protocol in `chargectl version` matches the `Helper:` line of `chargectl status`. Charge control is still **off**; `chargectl writes` is empty.
 - Result: ____ Date: ____
 
 ### 0.4 Restore (B3)
@@ -96,7 +96,7 @@ Read all of them at once with `for k in CHTE CH0B CH0C CHIE CH0J CH0I ACLC; do c
 
 ### 4. Discharge in Clamshell Mode (B9, external display needed)
 - [ ] Steps: external display, keyboard and mouse connected. Enable Discharge in Clamshell Mode. Start a discharge, close the lid.
-- [ ] Expected: `pmset -g assertions` shows PreventSystemSleep by ChargeGuardHelper; the Mac stays awake and keeps discharging. If it sleeps anyway: discharge pauses before sleep and resumes on wake (record which happened). Repeat with Advanced "Force clamshell awake": `pmset -g | grep SleepDisabled` shows 1 during discharge and returns to the previous value afterwards.
+- [ ] Expected: `pmset -g assertions` shows PreventSystemSleep by ChargeGuardHelper; the Mac stays awake and keeps discharging. If it sleeps anyway: discharge pauses before sleep and resumes on wake (record which happened). Repeat with "Force the Mac awake during clamshell discharge" (Settings > Charging): `pmset -g | grep SleepDisabled` shows 1 during discharge and returns to the previous value afterwards.
 - [ ] Without the setting: closing the lid pauses discharge ("Discharge paused: lid closed").
 - Result: ____ Date: ____
 
@@ -138,8 +138,8 @@ Read all of them at once with `for k in CHTE CH0B CH0C CHIE CH0J CH0I ACLC; do c
 - Result: ____ Date: ____
 
 ### 9. Control MagSafe LED (B7)
-- [ ] Steps: set LED to "Follow state". Observe while charging, at the limit, during discharge. Then set "System default".
-- [ ] Expected: orange while charging (`ACLC 04`), green at the limit (`03`), off while discharging (`01`); "System default" writes `00` and the LED returns to normal (confirm the `00` behaviour, record in docs/SMC-KEYS.md). Quit and uninstall also reset it.
+- [ ] Steps: set LED to "Show ChargeGuard's state" (`chargectl led state`). Observe while charging, at the limit, during discharge. Then "Off while plugged in" (`chargectl led off`), then "System default (not controlled)" (`chargectl led system`).
+- [ ] Expected: orange while charging (`ACLC 04`), green at the limit (`03`), off while discharging (`01`); "Off while plugged in" writes `01`; "System default" writes `00` and the LED returns to normal (confirm the `00` behaviour, record in docs/SMC-KEYS.md). Quit and uninstall also reset it.
 - [ ] Key table (ACLC).
 - Result: ____ Date: ____
 
@@ -222,7 +222,7 @@ Read all of them at once with `for k in CHTE CH0B CH0C CHIE CH0J CH0I ACLC; do c
 
 ### Backends (B10)
 - [ ] LegacyKeys (default on this Mac): verified by features 1–2.
-- [ ] AdapterCutoff: Settings > Advanced > Backend = Adapter cutoff. Expected: at the limit the adapter is cut (discharge key set) and reconnected 5 % lower; before sleep the adapter is reconnected; the UI shows the limitations text.
+- [ ] AdapterCutoff: Settings > Advanced > Backend = "Adapter cutoff (CHIE / CH0J / CH0I)". Expected: at the limit the adapter is cut (discharge key set) and reconnected 5 % lower (the default "Adapter cutoff minimum band"); before sleep the adapter is reconnected; the UI shows the limitations text.
 - [ ] FirmwareLimit: only if `bfF0` is present (record if absent: "not available on this firmware", verified in unit tests only).
 - [ ] Firmware detection: `chargectl status` shows the firmware version; matches `system_profiler SPHardwareDataType | grep -i firmware`.
 - Result: ____ Date: ____
@@ -236,7 +236,7 @@ Read all of them at once with `for k in CHTE CH0B CH0C CHIE CH0J CH0I ACLC; do c
 - Result: ____ Date: ____
 
 ### Uninstall (B11)
-- [ ] Steps: at the limit with discharge active, run `sudo scripts/uninstall.sh`.
-- [ ] Expected: keys restored first (key table), helper unloaded and removed, SMAppService registration removed, `/Library/Application Support/ChargeGuard` and `/usr/local/bin/chargectl` removed, the script prints what it removed; `pmset -g | grep SleepDisabled` is 0.
+- [ ] Steps: at the limit with discharge active, run `make uninstall` (or `sudo scripts/uninstall.sh /Applications/ChargeGuard.app`). Repeat once for each install path (SMAppService, then the fallback script).
+- [ ] Expected: keys restored first (key table; the script prints "Charging: restored ..."), helper unloaded and removed, SMAppService registration gone from System Settings > General > Login Items, `/Library/Application Support/ChargeGuard` and `/usr/local/bin/chargectl` removed, the script prints what it removed; `pmset -g | grep SleepDisabled` is 0.
 - [ ] Key table.
 - Result: ____ Date: ____

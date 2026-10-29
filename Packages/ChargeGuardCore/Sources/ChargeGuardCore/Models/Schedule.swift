@@ -65,7 +65,9 @@ public struct ScheduleRule: Codable, Equatable, Identifiable, Sendable {
     }
 
     public var summary: String {
-        "\(action.summary) at " + String(format: "%02ld:%02ld", hour, minute)
+        // Manual zero padding: `%ld` is 32-bit on Windows, so String(format:) is avoided for Int.
+        func twoDigits(_ n: Int) -> String { n >= 0 && n < 10 ? "0\(n)" : "\(n)" }
+        return "\(action.summary) at \(twoDigits(hour)):\(twoDigits(minute))"
     }
 }
 
@@ -74,4 +76,10 @@ public struct ScheduledOccurrence: Equatable, Sendable {
     public var ruleID: UUID
     public var scheduledAt: Date
     public var action: ScheduleAction
+
+    public init(ruleID: UUID, scheduledAt: Date, action: ScheduleAction) {
+        self.ruleID = ruleID
+        self.scheduledAt = scheduledAt
+        self.action = action
+    }
 }

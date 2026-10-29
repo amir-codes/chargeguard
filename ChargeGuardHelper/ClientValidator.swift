@@ -11,8 +11,8 @@ import ChargeGuardCore
 /// NSXPCConnection.setCodeSigningRequirement as a second check.
 ///
 /// Ad-hoc signed (development without a certificate): there is no Team ID to pin, so the check falls
-/// back to a valid signature, the bundle identifier prefix and the executable path. This is weaker and
-/// is logged as such.
+/// back to a valid signature, an exact signing identifier (com.amir.chargeguard or
+/// com.amir.chargeguard.chargectl) and the executable path. This is weaker and is logged as such.
 final class ClientValidator {
     private let logger: CoreLogger
     private let allowAnyClient: Bool
@@ -49,9 +49,9 @@ final class ClientValidator {
         }
 
         if let requirementText {
-            var requirement: SecRequirement?
-            guard SecRequirementCreateWithString(requirementText as CFString, [], &requirement) == errSecSuccess,
-                  let requirement else {
+            var requirementRef: SecRequirement?
+            guard SecRequirementCreateWithString(requirementText as CFString, [], &requirementRef) == errSecSuccess,
+                  let requirement = requirementRef else {
                 logger.error(LogCategory.xpc, "invalid requirement: \(requirementText)")
                 return false
             }
@@ -72,7 +72,8 @@ final class ClientValidator {
         }
         let identifier = Self.signingIdentifier(of: code) ?? ""
         let path = Self.path(of: code) ?? ""
-        let identifierOK = identifier.hasPrefix(HelperProtocol.bundleIdentifierPrefix)
+        // Exact identifiers (not just the prefix): Xcode signs the app and chargectl with their bundle IDs.
+        let identifierOK = Self.allowedIdentifiers.contains(identifier)
         let pathOK = path.hasSuffix("/ChargeGuard.app/Contents/MacOS/ChargeGuard")
             || (path as NSString).lastPathComponent == "chargectl"
         if !(identifierOK && pathOK) {
@@ -110,11 +111,13 @@ final class ClientValidator {
     }
 
     static func signingInformation(of code: SecCode) -> [String: Any]? {
-        var staticCode: SecStaticCode?
-        guard SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode else { return nil }
-        var info: CFDictionary?
+        var staticRef: SecStaticCode?
+        guard SecCodeCopyStaticCode(code, [], &staticRef) == errSecSuccess, let staticCode = staticRef else { return nil }
+        var infoRef: CFDictionary?
+        // kSecCSSigningInformation imports as UInt32 (anonymous CF_ENUM); if not, use SecCSFlags(rawValue: 1 << 1).
         let flags = SecCSFlags(rawValue: kSecCSSigningInformation)
-        guard SecCodeCopySigningInformation(staticCode, flags, &info) == errSecSuccess else { return nil }
+        guard SecCodeCopySigningInformation(staticCode, flags, &infoRef) == errSecSuccess,
+              let info = infoRef else { return nil }
         return info as? [String: Any]
     }
 
@@ -123,16 +126,16 @@ final class ClientValidator {
     }
 
     static func path(of code: SecCode) -> String? {
-        var staticCode: SecStaticCode?
-        guard SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode else { return nil }
-        var url: CFURL?
-        guard SecCodeCopyPath(staticCode, [], &url) == errSecSuccess, let url else { return nil }
+        var staticRef: SecStaticCode?
+        guard SecCodeCopyStaticCode(code, [], &staticRef) == errSecSuccess, let staticCode = staticRef else { return nil }
+        var urlRef: CFURL?
+        guard SecCodeCopyPath(staticCode, [], &urlRef) == errSecSuccess, let url = urlRef else { return nil }
         return (url as URL).path
     }
 
     static func teamIdentifierOfSelf() -> String? {
-        var code: SecCode?
-        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else { return nil }
+        var selfRef: SecCode?
+        guard SecCodeCopySelf([], &selfRef) == errSecSuccess, let code = selfRef else { return nil }
         return signingInformation(of: code)?[kSecCodeInfoTeamIdentifier as String] as? String
     }
 }

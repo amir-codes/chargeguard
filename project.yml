@@ -1,5 +1,6 @@
-# XcodeGen spec. Generate with `xcodegen generate` (the Makefile does this when the project is missing).
+# XcodeGen spec. Generate with `xcodegen generate` or `make project` (`make build` does it when the project is missing).
 # Kept deliberately plain: it was written without being able to run XcodeGen (Part A, Windows).
+# Regenerate after adding or removing source files: XcodeGen lists every file in the project.
 name: ChargeGuard
 
 options:
@@ -15,6 +16,7 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     SWIFT_STRICT_CONCURRENCY: minimal
     ENABLE_HARDENED_RUNTIME: YES
+    # The embed script below writes into the app bundle, outside any declared output.
     ENABLE_USER_SCRIPT_SANDBOXING: NO
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
@@ -37,8 +39,10 @@ targets:
     sources:
       - path: ChargeGuard
         excludes:
+          # Processed through INFOPLIST_FILE / CODE_SIGN_ENTITLEMENTS; never copied as resources.
           - "Resources/Info.plist"
           - "Resources/ChargeGuard.entitlements"
+      # Copied to Contents/Resources so the app can show the fallback install / uninstall commands.
       - path: scripts/install-helper.sh
         buildPhase: resources
       - path: scripts/uninstall.sh
@@ -61,20 +65,38 @@ targets:
         product: ChargeGuardSystem
       - package: ChargeGuardSystem
         product: ChargeGuardSessionKit
+      # Build-order dependencies only: the tools are copied into Contents/MacOS by the script below.
       - target: ChargeGuardHelper
         embed: false
+        link: false
       - target: chargectl
         embed: false
+        link: false
     postBuildScripts:
+      # Runs after the app's own build phases and before Xcode signs ChargeGuard.app, so the
+      # app signature seals the (already signed) tools and the launchd plist.
       - name: Embed helper, chargectl and launchd plist
+        shell: /bin/bash
         basedOnDependencyAnalysis: false
+        inputFiles:
+          - $(BUILT_PRODUCTS_DIR)/ChargeGuardHelper
+          - $(BUILT_PRODUCTS_DIR)/chargectl
+          - $(SRCROOT)/ChargeGuardHelper/com.amir.chargeguard.helper.plist
         script: |
           set -euo pipefail
           CONTENTS="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}"
+          PLIST_SRC="${SRCROOT}/ChargeGuardHelper/com.amir.chargeguard.helper.plist"
+          for tool in ChargeGuardHelper chargectl; do
+            if [[ ! -f "${BUILT_PRODUCTS_DIR}/${tool}" ]]; then
+              echo "error: ${BUILT_PRODUCTS_DIR}/${tool} is missing (did its target build?)"
+              exit 1
+            fi
+          done
+          plutil -lint "${PLIST_SRC}"
           mkdir -p "${CONTENTS}/MacOS" "${CONTENTS}/Library/LaunchDaemons"
           ditto "${BUILT_PRODUCTS_DIR}/ChargeGuardHelper" "${CONTENTS}/MacOS/ChargeGuardHelper"
           ditto "${BUILT_PRODUCTS_DIR}/chargectl" "${CONTENTS}/MacOS/chargectl"
-          ditto "${SRCROOT}/ChargeGuardHelper/com.amir.chargeguard.helper.plist" "${CONTENTS}/Library/LaunchDaemons/com.amir.chargeguard.helper.plist"
+          ditto "${PLIST_SRC}" "${CONTENTS}/Library/LaunchDaemons/com.amir.chargeguard.helper.plist"
 
   ChargeGuardHelper:
     type: tool
@@ -82,6 +104,8 @@ targets:
     sources:
       - path: ChargeGuardHelper
         excludes:
+          # Info.plist is embedded with CREATE_INFOPLIST_SECTION_IN_BINARY; the launchd plist is
+          # copied into the app by the app target's script. A tool has no resources phase.
           - "*.plist"
           - "*.entitlements"
     settings:
@@ -129,6 +153,7 @@ schemes:
         chargectl: all
     run:
       config: Debug
+      executable: ChargeGuard
       commandLineArguments:
         "--simulate": false
     archive:

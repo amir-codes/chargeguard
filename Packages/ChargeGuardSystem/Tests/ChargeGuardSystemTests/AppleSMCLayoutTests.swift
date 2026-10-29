@@ -15,7 +15,8 @@ final class AppleSMCLayoutTests: XCTestCase {
 
     /// Read-only: opens AppleSMC and probes the section 5 keys. Never writes. Works without root.
     func testProbeIsReadOnly() throws {
-        let smc = try AppleSMC()
+        // CI runners and VMs have no AppleSMC user client.
+        guard let smc = try? AppleSMC() else { throw XCTSkip("AppleSMC unavailable on this machine") }
         let report = KeyProber.probe(smc)
         XCTAssertEqual(report.entries.count, SMCKey.probeKeys.count)
         print(report.text)

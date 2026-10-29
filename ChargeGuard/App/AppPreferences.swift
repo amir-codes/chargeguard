@@ -50,18 +50,87 @@ struct PopupWidgetEntry: Codable, Equatable, Identifiable {
 }
 
 /// App-side preferences in UserDefaults (section 10). Policy settings live in the daemon.
+///
+/// The @Observable macro tracks the private `stored…` properties. The public properties are
+/// computed wrappers that persist on set: this avoids `didSet` observers on macro-tracked stored
+/// properties. Computed get/set properties still give `ReferenceWritableKeyPath`s, so
+/// `@Bindable var prefs` / `$prefs.iconStyle` keep working.
 @Observable
 final class AppPreferences {
     private let defaults: UserDefaults
 
-    var iconStyle: IconStyle { didSet { defaults.set(iconStyle.rawValue, forKey: Keys.iconStyle) } }
-    var colorByState: Bool { didSet { defaults.set(colorByState, forKey: Keys.colorByState) } }
-    var showPercentage: Bool { didSet { defaults.set(showPercentage, forKey: Keys.showPercentage) } }
-    var showLimitInMenuBar: Bool { didSet { defaults.set(showLimitInMenuBar, forKey: Keys.showLimitInMenuBar) } }
-    var showHardwarePercentage: Bool { didSet { defaults.set(showHardwarePercentage, forKey: Keys.showHardwarePercentage) } }
-    var widgets: [PopupWidgetEntry] { didSet { saveWidgets() } }
-    var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: Keys.onboarding) } }
-    var notificationsEnabled: Bool { didSet { defaults.set(notificationsEnabled, forKey: Keys.notifications) } }
+    private var storedIconStyle: IconStyle
+    private var storedColorByState: Bool
+    private var storedShowPercentage: Bool
+    private var storedShowLimitInMenuBar: Bool
+    private var storedShowHardwarePercentage: Bool
+    private var storedWidgets: [PopupWidgetEntry]
+    private var storedHasCompletedOnboarding: Bool
+    private var storedNotificationsEnabled: Bool
+
+    var iconStyle: IconStyle {
+        get { storedIconStyle }
+        set {
+            storedIconStyle = newValue
+            defaults.set(newValue.rawValue, forKey: Keys.iconStyle)
+        }
+    }
+
+    var colorByState: Bool {
+        get { storedColorByState }
+        set {
+            storedColorByState = newValue
+            defaults.set(newValue, forKey: Keys.colorByState)
+        }
+    }
+
+    var showPercentage: Bool {
+        get { storedShowPercentage }
+        set {
+            storedShowPercentage = newValue
+            defaults.set(newValue, forKey: Keys.showPercentage)
+        }
+    }
+
+    var showLimitInMenuBar: Bool {
+        get { storedShowLimitInMenuBar }
+        set {
+            storedShowLimitInMenuBar = newValue
+            defaults.set(newValue, forKey: Keys.showLimitInMenuBar)
+        }
+    }
+
+    var showHardwarePercentage: Bool {
+        get { storedShowHardwarePercentage }
+        set {
+            storedShowHardwarePercentage = newValue
+            defaults.set(newValue, forKey: Keys.showHardwarePercentage)
+        }
+    }
+
+    var widgets: [PopupWidgetEntry] {
+        get { storedWidgets }
+        set {
+            storedWidgets = newValue
+            saveWidgets()
+        }
+    }
+
+    var hasCompletedOnboarding: Bool {
+        get { storedHasCompletedOnboarding }
+        set {
+            storedHasCompletedOnboarding = newValue
+            defaults.set(newValue, forKey: Keys.onboarding)
+        }
+    }
+
+    var notificationsEnabled: Bool {
+        get { storedNotificationsEnabled }
+        set {
+            storedNotificationsEnabled = newValue
+            defaults.set(newValue, forKey: Keys.notifications)
+        }
+    }
 
     enum Keys {
         static let iconStyle = "iconStyle"
@@ -85,18 +154,18 @@ final class AppPreferences {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        iconStyle = IconStyle(rawValue: defaults.string(forKey: Keys.iconStyle) ?? "") ?? .filled
-        colorByState = defaults.object(forKey: Keys.colorByState) as? Bool ?? true
-        showPercentage = defaults.object(forKey: Keys.showPercentage) as? Bool ?? true
-        showLimitInMenuBar = defaults.object(forKey: Keys.showLimitInMenuBar) as? Bool ?? false
-        showHardwarePercentage = defaults.object(forKey: Keys.showHardwarePercentage) as? Bool ?? true
-        hasCompletedOnboarding = defaults.bool(forKey: Keys.onboarding)
-        notificationsEnabled = defaults.object(forKey: Keys.notifications) as? Bool ?? true
+        storedIconStyle = IconStyle(rawValue: defaults.string(forKey: Keys.iconStyle) ?? "") ?? .filled
+        storedColorByState = defaults.object(forKey: Keys.colorByState) as? Bool ?? true
+        storedShowPercentage = defaults.object(forKey: Keys.showPercentage) as? Bool ?? true
+        storedShowLimitInMenuBar = defaults.object(forKey: Keys.showLimitInMenuBar) as? Bool ?? false
+        storedShowHardwarePercentage = defaults.object(forKey: Keys.showHardwarePercentage) as? Bool ?? true
+        storedHasCompletedOnboarding = defaults.bool(forKey: Keys.onboarding)
+        storedNotificationsEnabled = defaults.object(forKey: Keys.notifications) as? Bool ?? true
         if let data = defaults.data(forKey: Keys.widgets),
            let saved = try? JSONDecoder().decode([PopupWidgetEntry].self, from: data) {
-            widgets = Self.merged(saved)
+            storedWidgets = Self.merged(saved)
         } else {
-            widgets = Self.defaultWidgets
+            storedWidgets = Self.defaultWidgets
         }
     }
 

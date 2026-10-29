@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import ChargeGuardCore
 
@@ -106,6 +107,7 @@ struct OnboardingView: View {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(HelperInstaller.installCommand, forType: .string)
                         }
+                        .accessibilityLabel("Copy the install command")
                     }
                 }
             }

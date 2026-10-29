@@ -45,6 +45,7 @@ struct AdvancedSettingsTab: View {
                 }
                 .disabled(!editable)
                 .accessibilityLabel("Adapter cutoff minimum band")
+                .accessibilityValue("\(model.config.adapterCutoffMinBand) percent")
             } header: {
                 Text("Charge control backend")
             } footer: {
@@ -70,6 +71,7 @@ struct AdvancedSettingsTab: View {
                     .disabled(probing || !editable)
                     Button("Copy") { SettingsPanels.copy(status?.probe?.text ?? "") }
                         .disabled(status?.probe == nil)
+                        .accessibilityLabel("Copy probe report")
                 }
             } header: {
                 Text("SMC key probe")

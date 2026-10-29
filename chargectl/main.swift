@@ -157,6 +157,11 @@ func directRestore() throws {
     let report = KeyProber.probe(smc)
     let writer = GuardedSMCWriter(io: smc, report: report)
     writer.snapshotSummary = (try? IORegistryBatteryReader(smc: smc).readSnapshot()).map(describe) ?? "battery unreadable"
+    // The one explicit override of "never write while another tool runs": the user asked for it under sudo.
+    let conflicts = ConflictScanner().scan().active
+    if !conflicts.isEmpty {
+        printErr("warning: another charging tool is running (\(conflicts.joined(separator: ", "))). Restoring anyway because you asked; that tool will probably rewrite the keys. Quit it for a lasting restore.")
+    }
     let result = writer.restoreAll(reason: "chargectl restore --direct", bypassBlock: true)
     for record in result.records { print(record.line) }
     for error in result.errors { printErr("error: \(error)") }

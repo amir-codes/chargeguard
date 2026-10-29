@@ -82,7 +82,7 @@ private struct EnergyRow: View {
                 .truncationMode(.middle)
             Spacer(minLength: 4)
             Text(valueText)
-                .font(compact ? .caption.monospacedDigit() : .body.monospacedDigit())
+                .font(compact ? Font.caption.monospacedDigit() : Font.body.monospacedDigit())
                 .foregroundStyle(.secondary)
             if canQuit(app) {
                 Button("Quit") { model.quitApp(pid: process.pid) }

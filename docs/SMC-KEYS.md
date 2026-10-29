@@ -38,13 +38,13 @@ Firmware limit write order (from batt): `bfF0 = 00`, `bfD0 = upper`, `bfE0 = low
 
 ## `chargectl probe` output
 
-Paste the full output here (B2, before any write):
+Paste the full output of `build/chargectl probe --direct` here (B2: the helper is not installed yet, and this only reads):
 
 ```
 (paste here)
 ```
 
-Selected backend at probe time (`chargectl status`): ____
+Selected backend once the helper runs (B3, `chargectl status`): ____
 
 ## Known firmware fragility
 
@@ -63,4 +63,4 @@ Apple's own charge limit in System Settings (macOS 26.4 and later, 80 to 100 %) 
 - [ ] `CHTE` survives sleep (blocked before sleep, still blocked on wake). Result: ____
 - [ ] Keys reset by a reboot (block charging, reboot, read again). Result: ____
 - [ ] `PowerTelemetryData` keys in `ioreg -rn AppleSmartBattery` (`SystemPowerIn`, `SystemLoad`, units mW): ____
-- [ ] Battery `Temperature` raw value ____ = ____ °C (ChargeGuard reads hundredths of a degree Celsius).
+- [ ] Battery `Temperature` raw value ____ = ____ °C. ChargeGuard reads it as hundredths of a degree Celsius (`BatteryRegistryParser.celsius`); the brief says hundredths of a kelvin. Compare with System Information or `ioreg` and fix whichever is wrong.

@@ -24,7 +24,9 @@ final class AppModel {
 
     let simulated: Bool
     let preferences = AppPreferences()
-    let installer = HelperInstaller()
+    /// Created in `init`: HelperInstaller is @MainActor, and a main-actor initializer call in a
+    /// stored-property default value is diagnosed as a nonisolated context before Swift 6.
+    let installer: HelperInstaller
     let notifier = Notifier()
 
     private(set) var connection: HelperConnection = .connecting
@@ -45,14 +47,16 @@ final class AppModel {
     private let transport: HelperTransport
     private let localReader = IORegistryBatteryReader()
     private let workspace = WorkspaceObserver()
-    private var pollTimer: Timer?
-    private var liveTimer: Timer?
-    private var liveRefreshClients = 0
-    private var lastStatusDate = Date.distantPast
-    private var started = false
+    // Bookkeeping that no view reads: not observed.
+    @ObservationIgnored private var pollTimer: Timer?
+    @ObservationIgnored private var liveTimer: Timer?
+    @ObservationIgnored private var liveRefreshClients = 0
+    @ObservationIgnored private var lastStatusDate = Date.distantPast
+    @ObservationIgnored private var started = false
 
     init(simulate: Bool) {
         simulated = simulate
+        installer = HelperInstaller()
         if simulate {
             transport = InProcessTransport.simulated(timeScale: 60)
         } else {

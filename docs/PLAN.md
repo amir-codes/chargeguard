@@ -10,7 +10,7 @@ Tick each box when its done criteria in `BATTERY_APP_PROMPT.md` section 13 are m
 - [x] A3 Helper: XPC service, client validation, control loop, persistence, restore paths, SMAppService plist, install and uninstall scripts
 - [x] A4 App: menu bar pop-up, Settings, Dashboard with Sankey, icon sets, notifications, App Intents, first-run wizard, --simulate
 - [x] A5 Tooling and docs: chargectl, project.yml, Makefile, SAFETY, TEST-CHECKLIST, SMC-KEYS template, THIRD_PARTY_NOTICES, LICENSE, README
-- [ ] A6 Self-review, MAC-BUILD-NOTES complete, PART-A-DONE written, Part B commands printed
+- [x] A6 Self-review, MAC-BUILD-NOTES complete, PART-A-DONE written, Part B commands printed
 
 ## Part B (Mac): compile, install, verify on hardware, push
 
@@ -33,26 +33,26 @@ Columns: written in Part A / verified on the Mac (hardware or simulation, see th
 
 | # | Feature | Part A written | Part B verified |
 |---|---|---|---|
-| 1 | Charge Limiter | [ ] | [ ] |
-| 2 | Discharge | [ ] | [ ] |
-| 3 | Automatic Discharge | [ ] | [ ] |
-| 4 | Discharge in Clamshell Mode | [ ] | [ ] |
-| 5 | Heat Protection | [ ] | [ ] |
-| 6 | Sailing Mode | [ ] | [ ] |
-| 7 | Top Up | [ ] | [ ] |
-| 8 | Calibration Mode | [ ] | [ ] |
-| 9 | Control MagSafe LED | [ ] | [ ] |
-| 10 | Disable Sleep until Charge Limit | [ ] | [ ] |
-| 11 | Sleep Control | [ ] | [ ] |
-| 12 | Stop Charging when Sleeping | [ ] | [ ] |
-| 13 | Stop Charging when App Closed | [ ] | [ ] |
-| 14 | Low Power Mode control | [ ] | [ ] |
-| 15 | Schedule | [ ] | [ ] |
-| 16 | Apple Shortcuts integration | [ ] | [ ] |
-| 17 | Live Status Icons | [ ] | [ ] |
-| 18 | Customizable menu bar icon and pop-up | [ ] | [ ] |
-| 19 | Hardware Battery Percentage | [ ] | [ ] |
-| 20 | Power Flow | [ ] | [ ] |
-| 21 | Apps Using Significant Energy | [ ] | [ ] |
-| 22 | Stats | [ ] | [ ] |
-| 23 | Fast User Switching | [ ] | [ ] |
+| 1 | Charge Limiter | [x] | [ ] |
+| 2 | Discharge | [x] | [ ] |
+| 3 | Automatic Discharge | [x] | [ ] |
+| 4 | Discharge in Clamshell Mode | [x] | [ ] |
+| 5 | Heat Protection | [x] | [ ] |
+| 6 | Sailing Mode | [x] | [ ] |
+| 7 | Top Up | [x] | [ ] |
+| 8 | Calibration Mode (the "After macOS Calibration" stretch goal is not implemented) | [x] | [ ] |
+| 9 | Control MagSafe LED | [x] | [ ] |
+| 10 | Disable Sleep until Charge Limit | [x] | [ ] |
+| 11 | Sleep Control | [x] | [ ] |
+| 12 | Stop Charging when Sleeping | [x] | [ ] |
+| 13 | Stop Charging when App Closed | [x] | [ ] |
+| 14 | Low Power Mode control | [x] | [ ] |
+| 15 | Schedule | [x] | [ ] |
+| 16 | Apple Shortcuts integration | [x] | [ ] |
+| 17 | Live Status Icons | [x] | [ ] |
+| 18 | Customizable menu bar icon and pop-up | [x] | [ ] |
+| 19 | Hardware Battery Percentage | [x] | [ ] |
+| 20 | Power Flow | [x] | [ ] |
+| 21 | Apps Using Significant Energy | [x] | [ ] |
+| 22 | Stats | [x] | [ ] |
+| 23 | Fast User Switching | [x] | [ ] |

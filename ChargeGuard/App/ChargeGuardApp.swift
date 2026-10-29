@@ -48,31 +48,33 @@ struct ChargeGuardApp: App {
     }
 }
 
+/// Explicitly main-actor isolated: NSApplicationDelegate callbacks arrive on the main thread and
+/// AppModel is @MainActor.
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let arguments = CommandLine.arguments
         // Used by scripts/uninstall.sh: unregister the SMAppService daemon and exit.
+        // Never block the main thread waiting for the completion handler (it may be delivered on the
+        // main queue): exit from the handler, with a 10-second fallback.
         if arguments.contains("--unregister-helper") {
             let service = SMAppService.daemon(plistName: HelperProtocol.launchdPlistName)
-            let semaphore = DispatchSemaphore(value: 0)
-            service.unregister { _ in semaphore.signal() }
-            _ = semaphore.wait(timeout: .now() + 10)
-            exit(0)
+            service.unregister { error in exit(error == nil ? 0 : 1) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { exit(0) }
+            return
         }
         guard MachineInfo.isAppleSilicon else { return }
-        Task { @MainActor in
-            AppModel.shared.start()
-        }
+        AppModel.shared.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        MainActor.assumeIsolated {
-            AppModel.shared.prepareForQuit()
-        }
+        guard !CommandLine.arguments.contains("--unregister-helper") else { return }
+        AppModel.shared.prepareForQuit()
     }
 }
 
 /// Opens windows from views. LSUIElement apps must activate before showing a window.
+@MainActor
 struct WindowOpener {
     let openWindow: OpenWindowAction
 

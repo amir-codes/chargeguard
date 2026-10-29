@@ -36,6 +36,7 @@ public final class ChargeController {
     private var timerInterval: Double = 0
     private var recentWrites: [KeyWriteRecord] = []
     private var lastWriteFailure: Date?
+    private var lastSaveDate: Date?
     private var lowPowerModeActive: Bool?
     private var lastLowPowerDesired: Bool?
     private var lastAdapterConnected: Bool?
@@ -98,16 +99,21 @@ public final class ChargeController {
             persisted.sleepDisabledSnapshot = nil
         }
 
+        // Scan for other charging tools before anything can be written (never write while one runs).
+        // The scan also sets `writer.blockedReason`.
+        rescanConflicts(force: true)
+
         // Stale state: keys left modified by a previous run.
         if persisted.keysDirty {
-            if persisted.config.appClosedBehavior == .restoreOnQuit || !persisted.config.controlEnabled {
+            if !conflicts.active.isEmpty {
+                logger.notice(LogCategory.controller, "keys modified by a previous run, but another charging tool is running: not restoring")
+            } else if persisted.config.appClosedBehavior == .restoreOnQuit || !persisted.config.controlEnabled {
                 restoreKeys(reason: "stale state found on start", bypassBlock: false)
             } else {
                 logger.info(LogCategory.controller, "keys modified by a previous run; enforcement continues (keep enforced)")
             }
         }
 
-        rescanConflicts(force: true)
         if startTimer { scheduleTimer() }
         tickOnQueue()
     }
@@ -359,6 +365,11 @@ public final class ChargeController {
         case .setControlEnabled(let on):
             config.controlEnabled = on
         case .restoreNormalCharging:
+            // Section 8: never write while another charging tool runs (it would rewrite the keys anyway).
+            // `sudo chargectl restore --direct` is the explicit manual override.
+            guard conflicts.active.isEmpty else {
+                throw ControllerError.rejected(Self.conflictRefusal(conflicts.active))
+            }
             // Turn control off first so the next tick does not re-apply the limit.
             config.controlEnabled = false
             control.manualDischarge = false
@@ -398,9 +409,14 @@ public final class ChargeController {
             control.calibration = nil
             persisted.config = config
             persisted.control = control
-            restoreKeys(reason: "uninstall", bypassBlock: true)
             deps.assertions.releaseAll()
             releaseSleepDisabled()
+            guard conflicts.active.isEmpty else {
+                saveIfChanged(force: true)
+                throw ControllerError.rejected("Charge control is off, but the keys were not restored: "
+                                               + Self.conflictRefusal(conflicts.active))
+            }
+            restoreKeys(reason: "uninstall", bypassBlock: false)
             control = persisted.control
         }
 
@@ -408,6 +424,11 @@ public final class ChargeController {
         persisted.control = control
         if timer != nil { scheduleTimer() }
         publish(events: emitted)
+    }
+
+    static func conflictRefusal(_ tools: [String]) -> String {
+        "another charging tool is running (\(tools.joined(separator: ", "))). Quit it first: ChargeGuard never writes "
+            + "while it runs. Emergency override: sudo chargectl restore --direct"
     }
 
     static func command(for action: ScheduleAction) -> HelperCommand {
@@ -428,7 +449,6 @@ public final class ChargeController {
         let now = deps.clock.now
 
         rescanConflicts(force: false)
-        writer.blockedReason = conflicts.active.isEmpty ? nil : "another charging tool is running (\(conflicts.active.joined(separator: ", ")))"
 
         let snapshot: BatterySnapshot
         do {
@@ -447,7 +467,7 @@ public final class ChargeController {
         let context = PolicyContext(now: now, sleepImminent: sleepImminent, lidClosed: lidClosed,
                                     externalDisplayConnected: externalDisplayConnected,
                                     conflicts: conflicts.active,
-                                    backend: backend?.capabilities ?? .none)
+                                    backend: backend?.capabilities ?? BackendCapabilities.none)
         let decision = PolicyEngine.evaluate(config: persisted.config, snapshot: snapshot,
                                              previous: persisted.control, context: context)
         persisted.control = decision.nextState
@@ -471,11 +491,11 @@ public final class ChargeController {
 
         guard decision.writesAllowed else {
             // Control off or another tool running. Restore once if ChargeGuard left keys modified,
-            // but never while another tool is running.
-            if conflicts.active.isEmpty && persisted.keysDirty {
-                restoreKeys(reason: decision.reasonText, bypassBlock: false)
+            // but never while another tool is running, and never retry faster than the control interval.
+            if conflicts.active.isEmpty && persisted.keysDirty && !writeRetryBlocked(now: now) {
+                lastWriteFailure = restoreKeys(reason: decision.reasonText, bypassBlock: false) ? nil : now
             }
-            deps.assertions.apply(.none)
+            deps.assertions.apply(AssertionSet.none)
             releaseSleepDisabled()
             return
         }
@@ -490,7 +510,7 @@ public final class ChargeController {
             return
         }
         // Never retry writes faster than the control interval.
-        if let failure = lastWriteFailure, now.timeIntervalSince(failure) < persisted.config.pollIntervalSeconds * 0.9 {
+        if writeRetryBlocked(now: now) {
             return
         }
 
@@ -523,7 +543,7 @@ public final class ChargeController {
                 setBackendError(nil)
                 publish(events: [.backendChanged(from: failed.kind.rawValue, to: next.rawValue, reason: error.description)])
                 logger.notice(LogCategory.controller, "switched backend \(failed.kind.rawValue) -> \(next.rawValue)")
-            } else if next == .none {
+            } else if next == BackendKind.none {
                 backend = nil
                 setBackendError("No usable charge-control keys left: \(error.description)")
             } else {
@@ -551,22 +571,39 @@ public final class ChargeController {
     }
 
     static func summary(_ s: BatterySnapshot) -> String {
-        String(format: "battery %ld %% (hw %.1f %%), %.1f °C, %ld mA", s.percentage, s.hardwarePercentage,
-               s.temperatureC, s.amperageMA)
+        // Ints are interpolated: `%ld` is 32-bit on Windows. `%.1f` with a Double is portable.
+        let hw = String(format: "%.1f", s.hardwarePercentage)
+        let temp = String(format: "%.1f", s.temperatureC)
+        return "battery \(s.percentage) % (hw \(hw) %), \(temp) °C, \(s.amperageMA) mA"
             + ", adapter \(s.adapterPresent ? "yes" : "no"), charging \(s.isCharging ? "yes" : "no")"
     }
 
-    private func restoreKeys(reason: String, bypassBlock: Bool) {
+    /// True while the last failed write is more recent than one control interval.
+    private func writeRetryBlocked(now: Date) -> Bool {
+        guard let failure = lastWriteFailure else { return false }
+        return now.timeIntervalSince(failure) < persisted.config.pollIntervalSeconds * 0.9
+    }
+
+    private func blockedReasonForConflicts() -> String? {
+        conflicts.active.isEmpty ? nil : "another charging tool is running (\(conflicts.active.joined(separator: ", ")))"
+    }
+
+    /// Returns true when every present key now holds its deactivate value.
+    @discardableResult
+    private func restoreKeys(reason: String, bypassBlock: Bool) -> Bool {
         let result = writer.restoreAll(reason: "restore: \(reason)", bypassBlock: bypassBlock)
         if result.errors.isEmpty {
             persisted.keysDirty = false
             persisted.lastApplied = .normal
             persisted.control.ledManaged = false
+            if backendError?.hasPrefix("Restore incomplete") == true { setBackendError(nil) }
             logger.notice(LogCategory.controller, "normal charging restored (\(reason)), \(result.records.count) writes")
             publish(events: [.restoredNormalCharging(reason: reason)])
+            return true
         } else {
             logger.error(LogCategory.controller, "restore incomplete (\(reason)): \(result.errors.joined(separator: "; "))")
             setBackendError("Restore incomplete: \(result.errors.joined(separator: "; ")). A reboot also resets the keys.")
+            return false
         }
     }
 
@@ -691,6 +728,7 @@ public final class ChargeController {
             }
         }
         conflicts = report
+        writer.blockedReason = blockedReasonForConflicts()
     }
 
     // MARK: - Publishing and persistence
@@ -721,16 +759,24 @@ public final class ChargeController {
         onStatus?(makeStatus())
     }
 
+    /// Saves when the state changed. `scheduleLastCheck` moves on every tick, so on its own it is only
+    /// checkpointed once a minute (enough for schedule catch-up after a reboot) instead of rewriting
+    /// state.json every 5 seconds.
     private func saveIfChanged(force: Bool = false) {
-        var toSave = persisted
-        toSave.savedAt = nil
-        guard let data = try? toSave.encoded() else { return }
-        if !force && data == lastSavedData { return }
+        var comparable = persisted
+        comparable.savedAt = nil
+        comparable.scheduleLastCheck = nil
+        guard let data = try? comparable.encoded() else { return }
+        let now = deps.clock.now
+        let contentChanged = data != lastSavedData
+        let checkpointDue = lastSaveDate.map { now.timeIntervalSince($0) >= 60 } ?? true
+        guard force || contentChanged || checkpointDue else { return }
         var stamped = persisted
-        stamped.savedAt = deps.clock.now
+        stamped.savedAt = now
         do {
             try deps.store.save(stamped)
             lastSavedData = data
+            lastSaveDate = now
         } catch {
             logger.error(LogCategory.persistence, "could not save state: \(error)")
         }
@@ -757,8 +803,8 @@ public final class ChargeController {
                             effectiveLimit: lastDecision?.effectiveLimit ?? persisted.config.chargeLimit,
                             controlPercentage: lastDecision?.controlPercentage,
                             lastOutputs: persisted.lastApplied,
-                            backend: backend?.kind ?? .none,
-                            backendCapabilities: backend?.capabilities ?? .none,
+                            backend: backend?.kind ?? BackendKind.none,
+                            backendCapabilities: backend?.capabilities ?? BackendCapabilities.none,
                             backendLimitations: backend?.limitations ?? [],
                             backendError: backendError,
                             hardware: backend?.readState(),

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import ChargeGuardCore
 
@@ -23,6 +24,8 @@ struct PopupView: View {
                     .foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
                     .onTapGesture { model.lastError = nil }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("Dismisses the error")
             }
             Divider()
             PopupBottomBar()
@@ -68,10 +71,10 @@ struct PopupHeader: View {
         let snapshot = model.snapshot
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(snapshot.map { "\($0.percentage) %" } ?? "—")
+                Text(Fmt.percent(snapshot?.percentage))
                     .font(.system(size: 40, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .accessibilityLabel("Battery \(snapshot?.percentage ?? 0) percent")
+                    .accessibilityLabel(percentAccessibilityLabel)
                 if model.preferences.showHardwarePercentage, let snapshot {
                     Text("Hardware \(Fmt.percent(snapshot.hardwarePercentage))")
                         .font(.caption)
@@ -82,7 +85,7 @@ struct PopupHeader: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 4) {
                 if let adapter = snapshot?.adapter, snapshot?.adapterPresent == true {
-                    Label(adapter.watts.map { "\($0) W" } ?? "Adapter", systemImage: "powerplug.fill")
+                    Label(adapterTitle(adapter), systemImage: "powerplug.fill")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .help(adapter.name ?? "Power adapter")
@@ -105,6 +108,16 @@ struct PopupHeader: View {
         }
         .accessibilityElement(children: .combine)
     }
+
+    private func adapterTitle(_ adapter: AdapterInfo) -> String {
+        guard let watts = adapter.watts else { return "Adapter" }
+        return "\(watts) W"
+    }
+
+    private var percentAccessibilityLabel: String {
+        guard let snapshot = model.snapshot else { return "Battery percentage unavailable" }
+        return "Battery \(snapshot.percentage) percent"
+    }
 }
 
 // MARK: - Limit slider (feature 1)
@@ -125,10 +138,10 @@ struct LimitSliderView: View {
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
-            Slider(value: $value, in: 20...100, step: step) { isEditing in
+            Slider(value: $value, in: 20...100, step: step, onEditingChanged: { isEditing in
                 editing = isEditing
                 if !isEditing { model.setLimit(Int(value)) }
-            }
+            })
             .accessibilityLabel("Charge limit")
             .accessibilityValue("\(Int(value)) percent")
             if Int(value) >= 100 {
@@ -214,6 +227,7 @@ struct CalibrationCard: View {
                         Spacer()
                         Button("Cancel", role: .destructive) { model.cancelCalibration() }
                             .controlSize(.small)
+                            .accessibilityLabel("Cancel calibration")
                     }
                     Text("Phase \(calibration.phase.letter): \(calibration.phase.title)")
                         .font(.callout)
@@ -274,6 +288,7 @@ struct KeepAwakeRow: View {
                     Spacer()
                     Button("Stop") { model.perform(.cancelKeepAwake) }
                         .controlSize(.small)
+                        .accessibilityLabel("Stop keeping the Mac awake")
                 }
                 .font(.caption)
             }

@@ -29,18 +29,17 @@ struct PowerFlowSankey: View, Animatable {
         }
     }
 
-    static let adapterColor = Color.orange
-    static let batteryColor = Color.green
-    static let systemColor = Color.blue
-
     private var adapterW: Double { adapterToSystem + adapterToBattery }
     private var systemW: Double { adapterToSystem + batteryToSystem }
     private var adapterConnected: Bool { source != .none }
-    private var batteryOnRight: Bool { adapterToBattery > 0.05 || batteryToSystem <= 0.05 }
 
     var body: some View {
+        // The Canvas closure only touches this plain value, never main-actor View state.
+        let renderer = PowerFlowSankeyRenderer(adapterToSystem: adapterToSystem, adapterToBattery: adapterToBattery,
+                                               batteryToSystem: batteryToSystem, adapterConnected: adapterConnected,
+                                               compact: compact)
         Canvas { context, size in
-            draw(in: &context, size: size)
+            renderer.draw(in: &context, size: size)
         }
         .accessibilityElement()
         .accessibilityLabel("Power flow")
@@ -60,10 +59,28 @@ struct PowerFlowSankey: View, Animatable {
         parts.append("system uses \(Fmt.watts(systemW))")
         return parts.joined(separator: ", ")
     }
+}
+
+/// Draws one frame of the Sankey diagram. A plain value type (not a View), so the Canvas renderer
+/// closure can call it from any isolation context.
+private struct PowerFlowSankeyRenderer {
+    let adapterToSystem: Double
+    let adapterToBattery: Double
+    let batteryToSystem: Double
+    let adapterConnected: Bool
+    let compact: Bool
+
+    static let adapterColor = Color.orange
+    static let batteryColor = Color.green
+    static let systemColor = Color.blue
+
+    private var adapterW: Double { adapterToSystem + adapterToBattery }
+    private var systemW: Double { adapterToSystem + batteryToSystem }
+    private var batteryOnRight: Bool { adapterToBattery > 0.05 || batteryToSystem <= 0.05 }
 
     // MARK: Drawing
 
-    private func draw(in context: inout GraphicsContext, size: CGSize) {
+    func draw(in context: inout GraphicsContext, size: CGSize) {
         let labelWidth: CGFloat = compact ? 58 : 112
         let nodeWidth: CGFloat = compact ? 5 : 12
         let gap: CGFloat = compact ? 22 : 36
@@ -159,10 +176,10 @@ struct PowerFlowSankey: View, Animatable {
     private func drawLabel(_ context: inout GraphicsContext, title: String, value: String, x: CGFloat, midY: CGFloat,
                            anchorLeading: Bool) {
         let offset: CGFloat = compact ? 6 : 8
-        let titleText = Text(title).font(compact ? .caption2 : .caption).foregroundColor(.secondary)
-        let valueText = Text(value).font(compact ? .caption2.weight(.semibold) : .callout.weight(.semibold))
-            .monospacedDigit()
-            .foregroundColor(.primary)
+        let titleFont: Font = compact ? .caption2 : .caption
+        let valueFont: Font = compact ? Font.caption2.weight(.semibold) : Font.callout.weight(.semibold)
+        let titleText: Text = Text(title).font(titleFont).foregroundColor(.secondary)
+        let valueText: Text = Text(value).font(valueFont).monospacedDigit().foregroundColor(.primary)
         let anchorTop: UnitPoint = anchorLeading ? .leading : .trailing
         context.draw(titleText, at: CGPoint(x: x, y: midY - offset), anchor: anchorTop)
         context.draw(valueText, at: CGPoint(x: x, y: midY + offset), anchor: anchorTop)

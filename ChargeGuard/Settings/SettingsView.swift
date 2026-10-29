@@ -8,28 +8,34 @@ import ChargeGuardCore
 struct SettingsView: View {
     var body: some View {
         TabView {
-            GeneralSettingsTab()
-                .tabItem { Label("General", systemImage: "gearshape") }
-            ChargingSettingsTab()
-                .tabItem { Label("Charging", systemImage: "battery.75percent") }
-            HeatSettingsTab()
-                .tabItem { Label("Heat", systemImage: "thermometer.high") }
-            SailingSettingsTab()
-                .tabItem { Label("Sailing", systemImage: "sailboat") }
-            CalibrationSettingsTab()
-                .tabItem { Label("Calibration", systemImage: "gauge.with.dots.needle.33percent") }
-            ScheduleSettingsTab()
-                .tabItem { Label("Schedule", systemImage: "calendar.badge.clock") }
-            SleepPowerSettingsTab()
-                .tabItem { Label("Sleep & Power", systemImage: "moon.zzz") }
-            AppearanceSettingsTab()
-                .tabItem { Label("Appearance", systemImage: "paintbrush") }
-            ShortcutsSettingsTab()
-                .tabItem { Label("Shortcuts", systemImage: "square.2.layers.3d") }
-            AdvancedSettingsTab()
-                .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
-            AboutSettingsTab()
-                .tabItem { Label("About", systemImage: "info.circle") }
+            // Two Groups keep each ViewBuilder block at 10 children or fewer (Group is transparent
+            // to TabView, so this is still 11 tabs).
+            Group {
+                GeneralSettingsTab()
+                    .tabItem { Label("General", systemImage: "gearshape") }
+                ChargingSettingsTab()
+                    .tabItem { Label("Charging", systemImage: "battery.75percent") }
+                HeatSettingsTab()
+                    .tabItem { Label("Heat", systemImage: "thermometer.high") }
+                SailingSettingsTab()
+                    .tabItem { Label("Sailing", systemImage: "sailboat") }
+                CalibrationSettingsTab()
+                    .tabItem { Label("Calibration", systemImage: "gauge.with.dots.needle.33percent") }
+                ScheduleSettingsTab()
+                    .tabItem { Label("Schedule", systemImage: "calendar.badge.clock") }
+            }
+            Group {
+                SleepPowerSettingsTab()
+                    .tabItem { Label("Sleep & Power", systemImage: "moon.zzz") }
+                AppearanceSettingsTab()
+                    .tabItem { Label("Appearance", systemImage: "paintbrush") }
+                ShortcutsSettingsTab()
+                    .tabItem { Label("Shortcuts", systemImage: "square.2.layers.3d") }
+                AdvancedSettingsTab()
+                    .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
+                AboutSettingsTab()
+                    .tabItem { Label("About", systemImage: "info.circle") }
+            }
         }
         // Eleven tabs need a little more width than 620 to fit the toolbar without overflow.
         .frame(width: 760, height: 540)

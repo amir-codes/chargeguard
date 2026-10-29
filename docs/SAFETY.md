@@ -8,12 +8,12 @@ This file lists every state ChargeGuard can leave a Mac in, how to recognise it,
 
 | Tool | Needs | What it does |
 |---|---|---|
-| Menu item "Restore normal charging" | helper running | Turns charge control off, cancels discharge, top up and calibration, then writes the deactivate value to every present charge, discharge and firmware-limit key and resets `ACLC` to `00`. |
+| Menu item "Restore normal charging" | helper running | Turns charge control off, cancels discharge, top up and calibration, then writes the deactivate value to every present charge, discharge and firmware-limit key and resets `ACLC` to `00`. Refused while another charging tool runs. |
 | `chargectl restore` | helper running | Same as the menu item, over XPC. |
 | `sudo chargectl restore --direct` | root, no helper needed | Opens AppleSMC directly, probes the keys and writes the same deactivate values. Use when the helper is gone or stuck. |
 | `chargectl prepare-uninstall` | helper running | Restore, release all assertions and the sleep hold, stop enforcing. Used by `scripts/uninstall.sh`. |
 | `sudo pmset -a disablesleep 0` | root | Clears a `SleepDisabled` hold left behind. |
-| Reboot | nothing | The SMC resets `CHTE`, `CH0B`, `CH0C`, `CHIE`, `CH0J`, `CH0I` and `ACLC` at boot. It does **not** reset `pmset` settings (`disablesleep`, `lowpowermode`). |
+| Reboot | nothing | The SMC resets `CHTE`, `CH0B`, `CH0C`, `CHIE`, `CH0J`, `CH0I` and `ACLC` at boot (as battery.sh documents; Part B confirms it on the M2, see the verification items in `docs/SMC-KEYS.md`). It does **not** reset `pmset` settings (`disablesleep`, `lowpowermode`). |
 
 Deactivate values written by every restore path (`GuardedSMCWriter.restoreAll`), in this order:
 
@@ -31,7 +31,8 @@ Only keys the probe found present are written. A key that fails does not stop th
 chargectl status            # policy state, backend, last outputs, key values, conflicts
 chargectl status --json     # the full DaemonStatus
 chargectl probe             # every key: present/absent, size, type, current value
-chargectl read CHTE         # one key
+chargectl probe --direct    # the same without the helper (reads only, no sudo)
+chargectl read CHTE         # one key (add --direct without the helper)
 chargectl writes            # the last SMC writes with reason and battery snapshot
 pmset -g                    # look for SleepDisabled and lowpowermode
 pmset -g assertions         # assertions held by ChargeGuardHelper
@@ -65,9 +66,9 @@ ioreg -rn AppleSmartBattery | grep -E 'ExternalConnected|IsCharging|CurrentCapac
 
 ### 4. MagSafe LED overridden
 
-- **Cause:** Control MagSafe LED set to "Follow state" or "Always off". `ACLC` = `03` green, `04` orange, `01` off.
+- **Cause:** Control MagSafe LED set to "Show ChargeGuard's state" or "Off while plugged in" (`chargectl led state` / `off`). `ACLC` = `03` green, `04` orange, `01` off.
 - **Symptom:** the LED colour does not match what macOS would show.
-- **Recovery:** set the LED option back to "System default" (writes `ACLC = 00` once), restore, or reboot. `ACLC = 00` as "system default" is unconfirmed upstream; Part B verifies it (docs/SMC-KEYS.md).
+- **Recovery:** set the LED option back to "System default (not controlled)" (`chargectl led system`; writes `ACLC = 00` once), restore, or reboot. `ACLC = 00` as "system default" is unconfirmed upstream; Part B verifies it (docs/SMC-KEYS.md).
 
 ### 5. Power assertions held
 
@@ -78,7 +79,7 @@ ioreg -rn AppleSmartBattery | grep -E 'ExternalConnected|IsCharging|CurrentCapac
 
 ### 6. `pmset disablesleep 1` held (clamshell force-awake)
 
-- **Cause:** the Advanced option "Force clamshell awake" while discharging in clamshell mode with an external display. Off by default.
+- **Cause:** the option "Force the Mac awake during clamshell discharge" (Settings > Charging, under Discharge in Clamshell Mode) while discharging in clamshell mode with an external display. Off by default.
 - **Symptom:** the Mac never sleeps, even with the lid closed and no display.
 - **Check:** `pmset -g | grep SleepDisabled`; `sleepDisabledSnapshot` in `/Library/Application Support/ChargeGuard/state.json` holds the value from before the hold.
 - **Automatic recovery:** the helper restores the snapshot when discharge ends, on SIGTERM, on start after a crash (a snapshot left in state.json is applied and cleared) and in `chargectl prepare-uninstall`. `scripts/uninstall.sh` also restores it from state.json.
@@ -100,7 +101,7 @@ ioreg -rn AppleSmartBattery | grep -E 'ExternalConnected|IsCharging|CurrentCapac
 
 - **Cause:** the app was deleted, or the daemon was unloaded without SIGTERM (for example `kill -9`).
 - **Symptom:** charging stays blocked, or forced discharge continues, with no ChargeGuard process.
-- **Recovery:** `sudo chargectl restore --direct` (if chargectl is still in `/usr/local/bin`) or reboot. A normal unload (`launchctl bootout`) sends SIGTERM, and the helper restores before exiting.
+- **Recovery:** `sudo chargectl restore --direct` (chargectl is in `/usr/local/bin` after a fallback install, in `ChargeGuard.app/Contents/MacOS/`, and in `build/` after `make build`) or reboot. A normal unload (`launchctl bootout`) sends SIGTERM, and the helper restores before exiting.
 
 ### 10. App quit
 
@@ -113,7 +114,7 @@ ioreg -rn AppleSmartBattery | grep -E 'ExternalConnected|IsCharging|CurrentCapac
 
 - **Cause:** the AlDente app process, a batt process or launchd label (`cc.chlc.batt`, `homebrew.mxcl.batt`), or the battery CLI (a `co.palokaj.battery` / `com.battery.app` label or its maintain process).
 - **Symptom:** red banner "Another charging tool is running". ChargeGuard writes nothing, not even a restore, while the other tool runs (two tools writing the same keys fight each other). The keys are whatever the other tool or ChargeGuard last wrote.
-- **Recovery:** quit the other tool. The helper rescans every 60 s and on wake. An explicit user restore ("Restore normal charging", `chargectl restore`, `restore --direct`) bypasses the block because it only writes default values. A battery CLI that is installed but not running is shown as information only.
+- **Recovery:** quit the other tool. The helper rescans every 60 s and on wake. While the conflict lasts the helper refuses every write, including "Restore normal charging", `chargectl restore` and `chargectl prepare-uninstall` (which still turns charge control off): the other tool would rewrite the keys anyway. The only override is `sudo chargectl restore --direct`, which warns and then writes the default values. On SIGTERM the helper also skips its restore while another tool runs. A battery CLI that is installed but not running is shown as information only.
 
 ### 12. Write failures and backend failover
 

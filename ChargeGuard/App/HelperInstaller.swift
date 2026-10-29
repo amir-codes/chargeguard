@@ -39,7 +39,7 @@ final class HelperInstaller {
             try service.register()
         } catch {
             lastError = "Could not register the helper: \(error.localizedDescription). " +
-                "You can install it from Terminal instead: sudo \"\(Self.bundledScript("install-helper.sh"))\""
+                "You can install it from Terminal instead: \(Self.installCommand)"
         }
         refresh()
         if status == .requiresApproval { openLoginItems() }
@@ -64,11 +64,12 @@ final class HelperInstaller {
         Bundle.main.url(forResource: name, withExtension: nil)?.path ?? "scripts/\(name)"
     }
 
+    /// Run through /bin/bash: Xcode's resource copy may not keep the scripts' executable bit.
     static var installCommand: String {
-        "sudo \"\(bundledScript("install-helper.sh"))\" \"\(Bundle.main.bundlePath)\""
+        "sudo /bin/bash \"\(bundledScript("install-helper.sh"))\" \"\(Bundle.main.bundlePath)\""
     }
 
     static var uninstallCommand: String {
-        "sudo \"\(bundledScript("uninstall.sh"))\" \"\(Bundle.main.bundlePath)\""
+        "sudo /bin/bash \"\(bundledScript("uninstall.sh"))\" \"\(Bundle.main.bundlePath)\""
     }
 }

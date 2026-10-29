@@ -51,8 +51,9 @@ public enum BatteryRegistryParser {
                              dcInPowerFromSMC: Double? = nil, batteryPowerFromSMC: Double? = nil) -> BatterySnapshot {
         let installed = bool(d["BatteryInstalled"]) ?? true
         let current = int(d["CurrentCapacity"]) ?? 0
-        let max = int(d["MaxCapacity"]) ?? 100
-        let percentage = max > 0 && max != 100 ? Int((Double(current) / Double(max) * 100).rounded()) : current
+        let maxCapacity = int(d["MaxCapacity"]) ?? 100
+        let percentage = maxCapacity > 0 && maxCapacity != 100
+            ? Int((Double(current) / Double(maxCapacity) * 100).rounded()) : current
         let rawCurrent = int(d["AppleRawCurrentCapacity"]) ?? 0
         let rawMax = int(d["AppleRawMaxCapacity"]) ?? 0
         let externalConnected = bool(d["ExternalConnected"]) ?? false

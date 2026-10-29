@@ -198,6 +198,22 @@ public enum PolicyEngine {
             }
         }
 
+        // Hard discharge floor (section 8). On the adapter-cutoff backend "inhibit" runs the Mac from the
+        // battery, so it is released at the floor too, even during a heat pause.
+        if pct <= minimumDischargeFloor {
+            if forceDischarge {
+                forceDischarge = false
+                dischargePausedReason = "battery at the \(minimumDischargeFloor) % discharge floor"
+                reasons.append("discharge stopped at the \(minimumDischargeFloor) % floor")
+            }
+            if inhibit && context.backend.inhibitIsAdapterCutoff {
+                inhibit = false
+                overrideHold = nil
+                sleepBlocked = false
+                reasons.append("adapter-cutoff backend: adapter reconnected at the \(minimumDischargeFloor) % floor")
+            }
+        }
+
         if !adapter { forceDischarge = false }
 
         // Discharge start/finish events.

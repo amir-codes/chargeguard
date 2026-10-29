@@ -54,6 +54,28 @@ final class ControllerTests: XCTestCase {
         XCTAssertEqual(sim.status.chargeStatus, .limitReached(limit: 80))
     }
 
+    func testRestoreRefusedWhileAnotherToolRuns() {
+        let sim = SimHarness(charge: 90)
+        sim.conflicts.report = ConflictReport(active: ["batt (cc.chlc.batt)"])
+        sim.controller.systemDidWake() // forces a rescan
+        sim.tick()
+        sim.smc.clearWriteLog()
+        XCTAssertTrue(sim.command(.restoreNormalCharging).isError)
+        XCTAssertTrue(sim.command(.prepareUninstall).isError)
+        XCTAssertTrue(sim.smc.writeLog.isEmpty, "restore never writes while another tool runs")
+        XCTAssertFalse(sim.status.config.controlEnabled, "uninstall still turns control off")
+    }
+
+    func testStateIsNotRewrittenEveryTick() {
+        let sim = SimHarness(charge: 80)
+        sim.tick()
+        let saves = sim.store.saveCount
+        for _ in 0..<6 { sim.tick(5) } // 30 s of steady state
+        XCTAssertEqual(sim.store.saveCount, saves, "only the schedule checkpoint changed")
+        sim.tick(40)
+        XCTAssertEqual(sim.store.saveCount, saves + 1, "checkpointed once a minute")
+    }
+
     func testRestoreCommandWritesDeactivateValuesAndStopsControl() {
         let sim = SimHarness(charge: 90)
         XCTAssertTrue(sim.smc.chargingInhibited)
@@ -123,7 +145,7 @@ final class ControllerTests: XCTestCase {
 
     func testUnsupportedMacShowsError() {
         let sim = SimHarness(profile: .unsupported, charge: 90)
-        XCTAssertEqual(sim.status.backend, .none)
+        XCTAssertEqual(sim.status.backend, BackendKind.none)
         if case .error = sim.status.chargeStatus {} else { XCTFail("expected error state, got \(sim.status.chargeStatus)") }
     }
 
@@ -244,7 +266,7 @@ final class ControllerTests: XCTestCase {
         _ = sim.command(.keepAwake(KeepAwakeRequest(durationSeconds: nil)))
         _ = sim.command(.prepareUninstall)
         XCTAssertFalse(sim.smc.chargingInhibited)
-        XCTAssertEqual(sim.assertions.current, .none)
+        XCTAssertEqual(sim.assertions.current, AssertionSet.none)
         XCTAssertFalse(sim.status.config.controlEnabled)
     }
 

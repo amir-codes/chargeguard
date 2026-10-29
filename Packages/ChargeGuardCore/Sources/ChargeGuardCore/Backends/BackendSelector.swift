@@ -33,7 +33,7 @@ public enum BackendSelector {
 
     public static func select(report: KeyProbeReport, preference: BackendPreference,
                               excluding: Set<BackendKind> = []) -> BackendKind {
-        candidates(report: report, preference: preference, excluding: excluding).first ?? .none
+        candidates(report: report, preference: preference, excluding: excluding).first ?? BackendKind.none
     }
 
     /// Instantiates a backend over `writer`. Returns nil for `.none` or when the keys are missing.

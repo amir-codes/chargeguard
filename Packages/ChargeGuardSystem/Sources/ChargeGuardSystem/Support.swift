@@ -23,13 +23,13 @@ public final class OSLogger: CoreLogger {
     }
 
     public func log(_ level: LogLevel, _ category: String, _ message: String) {
-        let logger = logger(category)
+        let osLogger = logger(category)
         switch level {
-        case .debug: logger.debug("\(message, privacy: .public)")
-        case .info: logger.info("\(message, privacy: .public)")
-        case .notice: logger.notice("\(message, privacy: .public)")
-        case .error: logger.error("\(message, privacy: .public)")
-        case .fault: logger.fault("\(message, privacy: .public)")
+        case .debug: osLogger.debug("\(message, privacy: .public)")
+        case .info: osLogger.info("\(message, privacy: .public)")
+        case .notice: osLogger.notice("\(message, privacy: .public)")
+        case .error: osLogger.error("\(message, privacy: .public)")
+        case .fault: osLogger.fault("\(message, privacy: .public)")
         }
         if echoToStderr {
             FileHandle.standardError.write(Data("[\(level.rawValue)] \(category): \(message)\n".utf8))

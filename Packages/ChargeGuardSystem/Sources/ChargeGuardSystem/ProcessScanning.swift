@@ -36,10 +36,12 @@ public enum ProcessList {
     }
 
     public static func entries() -> [Entry] {
-        allPIDs().compactMap { pid in
-            let path = path(of: pid)
-            guard let name = name(of: pid) ?? path.map({ ($0 as NSString).lastPathComponent }) else { return nil }
-            return Entry(pid: pid, name: name, path: path)
+        // Local names differ from `path(of:)`/`name(of:)` so the initializers do not refer to themselves.
+        allPIDs().compactMap { pid -> Entry? in
+            let executablePath = ProcessList.path(of: pid)
+            guard let processName = ProcessList.name(of: pid)
+                    ?? executablePath.map({ ($0 as NSString).lastPathComponent }) else { return nil }
+            return Entry(pid: pid, name: processName, path: executablePath)
         }
     }
 

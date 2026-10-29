@@ -70,8 +70,10 @@ final class SimHarness {
     init(profile: SimulatedSMC.Profile = .tahoe, charge: Double = 62, config: PolicyConfig? = enabledConfig(),
          store: InMemoryStateStore? = nil, clock: ManualTimeSource = ManualTimeSource(t0)) {
         self.clock = clock
-        var (deps, battery) = ControllerDependencies.makeSimulated(profile: profile, clock: clock, charge: charge,
-                                                                   calendar: utcCalendar())
+        let made = ControllerDependencies.makeSimulated(profile: profile, clock: clock, charge: charge,
+                                                        calendar: utcCalendar())
+        var deps = made.0
+        let battery = made.1
         if let store { deps.store = store }
         if let config, (try? deps.store.load()) == nil {
             try? deps.store.save(PersistedState(config: config))

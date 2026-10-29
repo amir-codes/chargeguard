@@ -94,6 +94,8 @@ public enum SMCValue {
 
     public static func decodeFirmwarePercent(_ bytes: [UInt8]) -> Int? {
         guard bytes.count == 4 else { return nil }
-        return Int(UInt32(bytes[0]) | UInt32(bytes[1]) << 8 | UInt32(bytes[2]) << 16 | UInt32(bytes[3]) << 24)
+        let b0 = UInt32(bytes[0]), b1 = UInt32(bytes[1]) << 8, b2 = UInt32(bytes[2]) << 16, b3 = UInt32(bytes[3]) << 24
+        let value: UInt32 = b0 | b1 | b2 | b3
+        return Int(value)
     }
 }

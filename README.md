@@ -21,7 +21,7 @@ Equivalents of AlDente Pro:
 6. **Sailing Mode**: after reaching the limit, run from the adapter until the battery falls by the sailing range (1 to 20 %, default 5 %).
 7. **Top Up**: charge to 100 % once, with an estimated time remaining.
 8. **Calibration Mode**: charge to 100 % and hold, discharge to 15 %, charge to 100 % and hold, restore the limit. Persistent, cancellable, schedulable.
-9. **Control MagSafe LED**: green at the limit, orange while charging, off while discharging.
+9. **Control MagSafe LED**: green at the limit or while charging is blocked, orange while charging, off while discharging; system default when the setting is off.
 10. **Disable Sleep until Charge Limit**.
 11. **Sleep Control**: keep awake for 30 minutes, 1, 2 or 4 hours, indefinitely or until the limit, optionally with the display on.
 12. **Stop Charging when Sleeping**: block charging just before sleep, since nothing can enforce the limit while asleep.
@@ -58,46 +58,50 @@ Captured in Part B with `make run-sim` (no real battery or helper needed):
 ## Build
 
 ```sh
-make build            # xcodegen generate (when the project is missing) + xcodebuild into build/
-make test             # unit tests (ChargeGuardCore runs on any platform with Swift)
+make build            # xcodegen generate (when the project is missing or project.yml changed) + xcodebuild
+                      # into build/ChargeGuard.app and build/chargectl
+make project          # regenerate the Xcode project (after adding or removing source files)
+make test             # unit tests: ChargeGuardCore (any platform with Swift) and ChargeGuardSystem (macOS)
 make run              # build and open build/ChargeGuard.app
 make run-sim          # open the app with --simulate: simulated battery, no helper, no SMC writes
-make install-helper   # fallback helper install: sudo scripts/install-helper.sh
+make install-helper   # fallback helper install: sudo scripts/install-helper.sh (asks for your password)
 make uninstall        # sudo scripts/uninstall.sh (restores charging first)
 make dmg              # build/ChargeGuard.dmg
 ```
 
-Signing uses an Apple Development certificate when one is in the keychain, otherwise ad-hoc. The hardened runtime is on. The `.xcodeproj` is generated from `project.yml` and never committed.
+Signing uses an Apple Development certificate when one is in the keychain, otherwise ad-hoc. The hardened runtime is on. The helper and `chargectl` are copied into `ChargeGuard.app/Contents/MacOS/` and the launchd plist into `Contents/Library/LaunchDaemons/` before the app is signed. The `.xcodeproj` is generated from `project.yml` and never committed. Only `make install-helper` and `make uninstall` use sudo.
 
 ## Installing the helper
 
 The first-run window explains what the helper does, installs it, probes the SMC keys, shows the result and asks for confirmation before it enables charge control. Until you confirm, nothing is written.
 
 - **Primary path:** the app registers the helper with `SMAppService`. Approve it in **System Settings > General > Login Items**. Move ChargeGuard.app to /Applications first.
-- **Fallback:** `sudo scripts/install-helper.sh /Applications/ChargeGuard.app`. It copies the helper to `/Library/PrivilegedHelperTools/`, writes `/Library/LaunchDaemons/com.amir.chargeguard.helper.plist`, bootstraps it, and installs `chargectl` to `/usr/local/bin`. Use one path, not both.
+- **Fallback:** `sudo scripts/install-helper.sh /Applications/ChargeGuard.app` (or `make install-helper` for the build in `build/`). It copies the helper to `/Library/PrivilegedHelperTools/`, writes `/Library/LaunchDaemons/com.amir.chargeguard.helper.plist`, bootstraps it, and installs `chargectl` to `/usr/local/bin`. Use one path, not both: the script refuses to run while the SMAppService helper is loaded.
 
 ## chargectl
 
 ```sh
-chargectl status [--json]     # state, backend, keys, conflicts
-chargectl probe               # every SMC key: present or absent, size, type, value
-chargectl read KEY            # read one key (e.g. CHTE)
-chargectl restore [--direct]  # restore normal charging (--direct: sudo, without the helper)
-chargectl limit N             # set the charge limit
+chargectl status [--json] [--direct]  # state, backend, keys, conflicts (--direct: battery + key probe, no helper)
+chargectl probe [--direct]            # every SMC key: present or absent, size, type, value
+chargectl read KEY [--direct]         # read one key (e.g. CHTE)
+chargectl restore [--direct]          # restore normal charging (--direct: sudo, without the helper)
+chargectl limit N                     # set the charge limit (20-100)
 chargectl discharge on|off
 chargectl topup on|off
 chargectl calibrate start [--fast] | stop
 chargectl heat on|off
 chargectl sailing on|off
-chargectl lpm MODE            # unmanaged, alwaysOff, alwaysOn, onlyOnBattery, onlyOnAdapter
-chargectl led MODE            # systemDefault, followState, alwaysOff
-chargectl keepawake MINUTES|off
-chargectl enable | disable    # charge control on or off
-chargectl events              # recent events
-chargectl writes              # recent SMC writes with reasons
-chargectl prepare-uninstall
+chargectl lpm unmanaged|off|on|battery|adapter   # Low Power Mode policy
+chargectl led system|state|off        # MagSafe LED: system default, show ChargeGuard's state, off
+chargectl keepawake MINUTES [--display] | forever | off
+chargectl enable | disable            # charge control on or off
+chargectl events                      # recent helper events
+chargectl writes                      # recent SMC writes with reasons
+chargectl prepare-uninstall           # restore charging and stop enforcing (used by uninstall.sh)
 chargectl version
 ```
+
+Without `--direct`, every command talks to the helper over XPC, so the helper must be installed. `--direct` reads work for any user.
 
 ## Safety
 
@@ -108,17 +112,17 @@ If charging looks wrong:
 1. Menu bar pop-up → **Restore normal charging**, or `chargectl restore`.
 2. Without the helper: `sudo chargectl restore --direct`.
 3. A reboot resets every SMC charging key to the macOS default.
-4. If the Mac never sleeps after clamshell discharge with "Force clamshell awake": `sudo pmset -a disablesleep 0`.
+4. If the Mac never sleeps after a clamshell discharge with "Force the Mac awake during clamshell discharge" (Settings > Charging): `sudo pmset -a disablesleep 0`. A reboot does not clear this one.
 
 `docs/SAFETY.md` lists every state ChargeGuard can leave the Mac in and how to recover from each.
 
 ## Uninstall
 
 ```sh
-sudo scripts/uninstall.sh /Applications/ChargeGuard.app
+sudo scripts/uninstall.sh /Applications/ChargeGuard.app   # or: make uninstall
 ```
 
-It restores normal charging first (through the helper, or directly), unloads and removes the helper (both install paths, including the SMAppService registration), restores `pmset disablesleep` if ChargeGuard held it, removes `/Library/Application Support/ChargeGuard` and `/usr/local/bin/chargectl`, and prints what it removed. Then drag ChargeGuard.app to the Trash. App preferences can be removed with `defaults delete com.amir.chargeguard`. Low Power Mode is left as it is.
+Without a path the script looks for `/Applications/ChargeGuard.app`, then `build/ChargeGuard.app`. It restores normal charging first (through the helper, or directly), unregisters the SMAppService helper, unloads and removes the fallback install, restores `pmset disablesleep` if ChargeGuard held it, removes `/Library/Application Support/ChargeGuard` and `/usr/local/bin/chargectl`, and prints whether charging was restored and what it removed. The SMAppService registration is removed through the app itself (`--unregister-helper`), so run the uninstall before you drag ChargeGuard.app to the Trash. App preferences can be removed with `defaults delete com.amir.chargeguard`. Low Power Mode is left as it is.
 
 ## macOS 27 and firmware notes
 
@@ -126,7 +130,7 @@ It restores normal charging first (through the helper, or directly), unloads and
 - ChargeGuard selects its backend by key presence and fails over at runtime:
   - **LegacyKeys** (`CHTE` or `CH0B`+`CH0C`, discharge with `CHIE`/`CH0J`/`CH0I`): the default where the charge keys work.
   - **FirmwareLimit** (`bfD0` upper and `bfE0` lower, when `bfF0` exists): the firmware holds the limit itself, also during sleep.
-  - **AdapterCutoff** (only a discharge key): holds the limit by cutting wall power at the limit and reconnecting it at least 5 % lower, so the battery cycles in a small band. It works only while the Mac is awake; the adapter is reconnected before sleep, so the battery may charge past the limit while asleep.
+  - **AdapterCutoff** (only a discharge key): holds the limit by cutting wall power at the limit and reconnecting it lower (at least 5 % by default; Settings > Advanced > Adapter cutoff minimum band, 1 to 20 %), so the battery cycles in a small band. It works only while the Mac is awake; the adapter is reconnected before sleep, so the battery may charge past the limit while asleep.
 - Apple's own charge limit in System Settings (macOS 26.4 and later, 80 to 100 %) is not used. It is not available on the Part B test Mac (macOS 15.5).
 - Check your firmware with `system_profiler SPHardwareDataType | grep -i firmware` and the keys with `chargectl probe`.
 

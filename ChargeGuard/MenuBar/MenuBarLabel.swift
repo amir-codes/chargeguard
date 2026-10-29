@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import ChargeGuardCore
 
@@ -22,7 +23,7 @@ struct MenuBarLabel: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText(percentage: percentage))
-        .onChange(of: model.showOnboarding) { _, show in
+        .onChange(of: model.showOnboarding, initial: true) { _, show in
             if show {
                 model.showOnboarding = false
                 WindowOpener(openWindow: openWindow).onboarding()

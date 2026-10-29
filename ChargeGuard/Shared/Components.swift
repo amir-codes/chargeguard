@@ -45,8 +45,8 @@ enum Fmt {
         guard let seconds else { return "—" }
         let total = Int(seconds.rounded())
         let h = total / 3600, m = (total % 3600) / 60, s = total % 60
-        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
-        return String(format: "%d:%02d", m, s)
+        if h > 0 { return String(format: "%ld:%02ld:%02ld", h, m, s) }
+        return String(format: "%ld:%02ld", m, s)
     }
 
     static func time(_ date: Date?) -> String {

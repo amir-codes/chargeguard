@@ -31,7 +31,7 @@ final class BackendTests: XCTestCase {
         XCTAssertEqual(select(.tahoe), .legacyKeys)
         XCTAssertEqual(select(.legacy), .legacyKeys)
         XCTAssertEqual(select(.adapterOnly), .adapterCutoff)
-        XCTAssertEqual(select(.unsupported), .none)
+        XCTAssertEqual(select(.unsupported), BackendKind.none)
         XCTAssertEqual(select(.firmwareGated), .legacyKeys, "gating is only known after a failed write")
         XCTAssertEqual(select(.firmwareGated, .firmwareLimit), .firmwareLimit)
         XCTAssertEqual(select(.tahoe, .adapterCutoff), .adapterCutoff)
