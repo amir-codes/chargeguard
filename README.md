@@ -339,8 +339,8 @@ verifies every feature on real hardware. [`docs/PLAN.md`](docs/PLAN.md) tracks b
 3. The [Release workflow](.github/workflows/release.yml) runs the unit tests, builds the ad-hoc signed app
    and DMG on a GitHub-hosted Mac, and drafts a release with `ChargeGuard.dmg` and its checksum.
 4. Download the DMG from the draft and test it on a Mac, including the helper install from the first-run
-   window: registering the helper with an ad-hoc signed app hasn't been tested yet (the `sudo` fallback
-   script works either way). Then publish. Drafts don't count as the latest release,
+   window. With 1.0.0 the Terminal install (`install-helper.sh`) was tested on the M2; registering through
+   the first-run window's button (SMAppService) with an ad-hoc signed app is still untested. Then publish. Drafts don't count as the latest release,
    so the website's download button and `install.sh` only see a release once it's published.
 
 **Actions → Release → Run workflow** builds the same DMG as a run artifact, without a release, for testing.
