@@ -1,0 +1,41 @@
+<!doctype html>
+<!--
+  Source of docs/brand/cover.png, the banner at the top of README.md.
+  It is the "Cover" board of the ChargeGuard Penpot file (penpot-cover@2x.png, exported at 2x), cropped
+  to 1440 x 700. " Website" is erased from its title, and the two lines under it are replaced for the app.
+  To re-render: open at 1440 x 700 with device pixel ratio 2 and capture a screenshot.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ChargeGuard README cover</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&display=block" rel="stylesheet" />
+    <style>
+      html, body { margin: 0; }
+      body {
+        position: relative;
+        width: 1440px;
+        height: 700px;
+        overflow: hidden;
+        background: #fff url("penpot-cover@2x.png") 0 -110px / 1440px 900px no-repeat;
+        font-family: Inter, system-ui, sans-serif;
+        color: #5b6470;
+        -webkit-font-smoothing: antialiased;
+      }
+      /* Penpot positions minus the 110 px crop. */
+      /* Only plain white is painted over: the icon's shadow reaches the title's first word, so that word stays. */
+      .erase-word { position: absolute; left: 464px; top: 376px; width: 240px; height: 74px; background: #fff; }
+      .erase-lines { position: absolute; left: 120px; top: 452px; width: 600px; height: 78px; background: #fff; }
+      .lead { position: absolute; left: 125px; top: 460px; margin: 0; font-size: 18px; line-height: 28px; }
+      .stack { position: absolute; left: 125px; top: 496px; margin: 0; font-size: 16px; line-height: 24px; }
+    </style>
+  </head>
+  <body>
+    <div class="erase-word"></div>
+    <div class="erase-lines"></div>
+    <p class="lead">The free, open source charge limiter for Apple silicon MacBooks.</p>
+    <p class="stack">Menu bar app · root helper · chargectl · macOS 14 or later</p>
+  </body>
+</html>
