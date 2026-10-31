@@ -23,9 +23,10 @@
 
 > [!WARNING]
 > **In development, no release yet.** ChargeGuard builds and passes its unit tests on a MacBook Air M2
-> (macOS 15.5), and a read-only probe found every charge key it needs. It has not written to the SMC yet:
-> installing the helper and testing charge control on hardware is the next phase. Until then, try the
-> interface safely with `make run-sim`. Progress is tracked in [`docs/PLAN.md`](docs/PLAN.md).
+> (macOS 15.5). On that Mac the Charge Limiter has held the battery at 80 % through a 30-minute test, with
+> `CHTE` blocking charging the whole time. The other features are still being verified on hardware, phase
+> by phase. Until a release, try the interface safely with `make run-sim`. Progress is tracked in
+> [`docs/PLAN.md`](docs/PLAN.md) and [`docs/TEST-CHECKLIST.md`](docs/TEST-CHECKLIST.md).
 
 ChargeGuard is a battery-care menu bar app for Apple silicon MacBooks. Charging to 100 % every day is what
 wears a battery out, so ChargeGuard holds the charge at a limit you choose, discharges to that limit while
@@ -257,7 +258,7 @@ uninstall before you drag ChargeGuard.app to the Trash. App preferences can be r
 
 | Mac | macOS | Firmware | Charge keys | Firmware-limit keys | Backend |
 |---|---|---|---|---|---|
-| MacBook Air M2 (Mac14,2) | 15.5 (24F74) | 11881.121.1 | `CHTE`, `CH0B`, `CH0C`, `CHIE`, `CH0J`, `CH0I` present | `bfF0`, `bfD0`, `bfE0` absent | LegacyKeys, from a read-only probe on 30 Oct 2026 (no writes yet) |
+| MacBook Air M2 (Mac14,2) | 15.5 (24F74) | 11881.121.1 | `CHTE`, `CH0B`, `CH0C`, `CHIE`, `CH0J`, `CH0I` present | `bfF0`, `bfD0`, `bfE0` absent | LegacyKeys: `CHTE` held an 80 % limit for 30 minutes (30 Oct 2026) |
 
 ## Project structure
 
@@ -292,7 +293,7 @@ verifies every feature on real hardware. [`docs/PLAN.md`](docs/PLAN.md) tracks b
 | B0 | Mac setup: toolchain and environment notes | ✅ |
 | B1 | Compiles: `make build` and `make test` green (133 Core and 4 System tests) | ✅ |
 | B2 | Read-only run: live battery data, `chargectl probe`, SMC-KEYS filled in | ✅ |
-| B3 | Helper installed, `chargectl restore`, Charge Limiter end to end | ⏳ next |
+| B3 | Helper installed, `chargectl restore`, Charge Limiter end to end | 🔄 in progress: 80 % held for 30 minutes |
 | B4–B10 | Every remaining feature verified on hardware | ⏳ |
 | B11 | Packaging: DMG, uninstall verified, final docs | ⏳ |
 
