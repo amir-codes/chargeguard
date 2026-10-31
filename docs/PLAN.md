@@ -1,6 +1,6 @@
 # ChargeGuard plan
 
-Tick each box when its done criteria in `BATTERY_APP_PROMPT.md` section 13 are met. Part A runs on Windows without a compiler, so its boxes mean "written and reviewed", never "compiles".
+Tick each box when its done criteria in the brief (section 13; `BATTERY_APP_PROMPT.md`, kept on the Mac only) are met. Part A runs on Windows without a compiler, so its boxes mean "written and reviewed", never "compiles".
 
 ## Part A (Windows): write everything, push
 
@@ -14,7 +14,7 @@ Tick each box when its done criteria in `BATTERY_APP_PROMPT.md` section 13 are m
 
 ## Part B (Mac): compile, install, verify on hardware, push
 
-- [x] B0 Setup: toolchain, REA, Ghidra, AlDente quit, docs/ENVIRONMENT.md
+- [x] B0 Setup: toolchain and Mac environment (setup log kept locally)
 - [x] B1 Compile: xcodegen generate, make build green for every target, make test green, commit "compiles on macOS"
 - [x] B2 Read-only run: live battery data in the menu bar, `chargectl probe` output, docs/SMC-KEYS.md filled in
 - [ ] B3 Helper and limit: daemon installed (confirmation 2), `chargectl restore` works, Charge Limiter end to end (confirmation 3), 30-minute hold at the limit

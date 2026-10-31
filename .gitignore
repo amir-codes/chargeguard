@@ -10,3 +10,7 @@ xcuserdata/
 # Penpot MCP session files written by docs/design/penpot-build/pp.sh
 docs/design/penpot-build/hdr.txt
 docs/design/penpot-build/sid.txt
+
+# Private working notes, kept on the Mac only: the original brief and the test Mac's setup log.
+BATTERY_APP_PROMPT.md
+docs/ENVIRONMENT.md

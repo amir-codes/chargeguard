@@ -1,6 +1,6 @@
 # ChargeGuard
 
-macOS (Apple silicon) battery-care menu bar app plus a root helper daemon. Clean-room reimplementation of the AlDente Free and Pro feature set, MIT licensed. The full brief is `BATTERY_APP_PROMPT.md`; the phase checklist is `docs/PLAN.md`.
+macOS (Apple silicon) battery-care menu bar app plus a root helper daemon. Clean-room reimplementation of the AlDente Free and Pro feature set, MIT licensed. The full brief is `BATTERY_APP_PROMPT.md` and the test Mac's setup log is `docs/ENVIRONMENT.md`; both are kept on the Mac only (git-ignored, not in the public repo). The phase checklist is `docs/PLAN.md`.
 
 **Status:** B1 done on 2026-10-30: `make build` (Release, signed with the Apple Development identity, hardened runtime) and `make test` (ChargeGuardCore 133 tests, ChargeGuardSystem 4 tests) pass on the M2 with Xcode 16.4. Helper not yet installed; no SMC key written yet. Part B continues from `docs/PLAN.md`.
 

@@ -319,11 +319,10 @@ uninstall before you drag ChargeGuard.app to the Trash. App preferences can be r
   [TEST-CHECKLIST](docs/TEST-CHECKLIST.md), [SMC-KEYS](docs/SMC-KEYS.md) and
   [MAC-BUILD-NOTES](docs/MAC-BUILD-NOTES.md).
 - **[project.yml](project.yml)** and **[Makefile](Makefile)**: the XcodeGen spec and the build entry points.
-- **[BATTERY_APP_PROMPT.md](BATTERY_APP_PROMPT.md)**: the full brief.
 
 ## Development status
 
-ChargeGuard is built in two parts, described in [`BATTERY_APP_PROMPT.md`](BATTERY_APP_PROMPT.md). Part A
+ChargeGuard is built in two parts. Part A
 wrote all the code, scripts and docs on Windows without a compiler. Part B compiles it on a Mac and
 verifies every feature on real hardware. [`docs/PLAN.md`](docs/PLAN.md) tracks both, and
 [`CLAUDE.md`](CLAUDE.md) holds the build commands, architecture and safety rules.

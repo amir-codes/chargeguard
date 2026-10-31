@@ -8,7 +8,7 @@ import Foundation
 // - charlie0129/batt README and key list (GPL-2.0, facts only, no code): firmware charge-limit keys
 //   bfF0/bfD0/bfE0, their little-endian ui32 encoding and write order, and read-only telemetry keys.
 //
-// Never add a key or value here that does not come from those sources (BATTERY_APP_PROMPT.md section 5).
+// Never add a key or value here that does not come from those sources (the brief's section 5, docs/SMC-KEYS.md).
 // Every write goes through `GuardedSMCWriter`, which refuses keys that the probe did not confirm.
 
 public enum SMCKey {
