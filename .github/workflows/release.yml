@@ -4,6 +4,8 @@
 #             The run drafts the release; download the DMG from the draft, test it, then publish.
 #             Drafts are invisible to /releases/latest, so nothing reaches users until you publish.
 #   Test run: Actions > Release > Run workflow builds the DMG and uploads it as a run artifact only.
+#   No Actions: scripts/release.sh does the same build on a Mac and drafts the release itself. A tag it
+#             pushes also starts this workflow, which then finds the release and leaves it alone.
 #
 # Release builds are ad-hoc signed: there is no Developer ID certificate, so the app is not notarized and
 # macOS asks once before the first launch (see README > Install). The workflow passes IDENTITY=- so a
@@ -73,6 +75,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "::notice::Release $GITHUB_REF_NAME already exists (drafted by scripts/release.sh); leaving it as it is."
+            exit 0
+          fi
           gh release create "$GITHUB_REF_NAME" build/ChargeGuard.dmg build/ChargeGuard.dmg.sha256 \
             --draft \
             --title "ChargeGuard ${GITHUB_REF_NAME#v}" \

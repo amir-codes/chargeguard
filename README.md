@@ -312,8 +312,8 @@ uninstall before you drag ChargeGuard.app to the Trash. App preferences can be r
 - **[ChargeGuard](ChargeGuard)**: the SwiftUI menu bar app, Settings, Dashboard, App Intents and
   onboarding.
 - **[chargectl](chargectl)**: the command-line tool.
-- **[scripts](scripts)**: helper install and uninstall, DMG packaging, signing and the one-line installer
-  (`install.sh`).
+- **[scripts](scripts)**: helper install and uninstall, DMG packaging, signing, the one-line installer
+  (`install.sh`) and the local release script (`release.sh`).
 - **[.github](.github)**: the release workflow and the release notes template.
 - **[docs](docs)**: [PLAN](docs/PLAN.md), [SAFETY](docs/SAFETY.md),
   [TEST-CHECKLIST](docs/TEST-CHECKLIST.md), [SMC-KEYS](docs/SMC-KEYS.md) and
@@ -350,6 +350,18 @@ verifies every feature on real hardware. [`docs/PLAN.md`](docs/PLAN.md) tracks b
    so the website's download button and `install.sh` only see a release once it's published.
 
 **Actions → Release → Run workflow** builds the same DMG as a run artifact, without a release, for testing.
+
+**Without GitHub Actions**, release from a Mac with [`scripts/release.sh`](scripts/release.sh). It runs the same
+steps: unit tests, the ad-hoc build (in `build/release/`, so a development helper installed from `build/`
+keeps working), signature and version checks, the checksum, then it pushes the tag and drafts the release
+with `gh`. It refuses to run with uncommitted or unpushed changes, or when the tag or release already
+exists, and asks before anything leaves the Mac.
+
+```sh
+scripts/release.sh --dry-run   # test and build only, print the git and gh commands
+scripts/release.sh             # the real thing; then test the draft and publish it
+gh release edit v1.0.0 --draft=false
+```
 
 ## Screenshots
 
