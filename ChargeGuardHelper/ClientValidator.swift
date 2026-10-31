@@ -10,9 +10,10 @@ import ChargeGuardCore
 /// (SecCodeCheckValidity). The connection also gets the same requirement through
 /// NSXPCConnection.setCodeSigningRequirement as a second check.
 ///
-/// Ad-hoc signed (development without a certificate): there is no Team ID to pin, so the check falls
-/// back to a valid signature, an exact signing identifier (com.amir.chargeguard or
-/// com.amir.chargeguard.chargectl) and the executable path. This is weaker and is logged as such.
+/// Ad-hoc signed (releases and development without a certificate): there is no Team ID to pin, so the
+/// check falls back to a valid signature plus `AdHocClientRule`: an exact signing identifier
+/// (com.amir.chargeguard or com.amir.chargeguard.chargectl) at a matching location. This is weaker and is
+/// logged as such.
 final class ClientValidator {
     private let logger: CoreLogger
     private let allowAnyClient: Bool
@@ -72,14 +73,13 @@ final class ClientValidator {
         }
         let identifier = Self.signingIdentifier(of: code) ?? ""
         let path = Self.path(of: code) ?? ""
-        // Exact identifiers (not just the prefix): Xcode signs the app and chargectl with their bundle IDs.
-        let identifierOK = Self.allowedIdentifiers.contains(identifier)
-        let pathOK = path.hasSuffix("/ChargeGuard.app/Contents/MacOS/ChargeGuard")
-            || (path as NSString).lastPathComponent == "chargectl"
-        if !(identifierOK && pathOK) {
+        // Exact identifier, and a location that matches it. SecCodeCopyPath gives the bundle for the app,
+        // so matching the app's executable path (as before 1.0.0) rejected the app; see AdHocClientRule.
+        let accepted = AdHocClientRule.accepts(identifier: identifier, path: path)
+        if !accepted {
             logger.error(LogCategory.xpc, "client rejected: identifier '\(identifier)', path '\(path)'")
         }
-        return identifierOK && pathOK
+        return accepted
     }
 
     // MARK: Security framework helpers
