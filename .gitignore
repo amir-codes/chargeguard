@@ -6,3 +6,7 @@ DerivedData/
 .build/
 .swiftpm/
 xcuserdata/
+
+# Penpot MCP session files written by docs/design/penpot-build/pp.sh
+docs/design/penpot-build/hdr.txt
+docs/design/penpot-build/sid.txt
