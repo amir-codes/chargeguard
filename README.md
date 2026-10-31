@@ -102,14 +102,47 @@ a command-line tool and a `--simulate` mode.
 
 ## Install
 
-There's no release yet. When the first one ships, it will be a signed DMG on the
-[Releases](https://github.com/amir-codes/chargeguard/releases) page. Until then, build from source.
+There's no release yet; until the first one, [build from source](#build-from-source). Releases will work
+like this.
 
-**Requirements**
+**Requirements:** a MacBook with Apple silicon (Intel Macs show an "unsupported" screen) and macOS 14
+Sonoma or later.
 
-- A MacBook with Apple silicon. Intel Macs show an "unsupported" screen.
-- macOS 14 Sonoma or later.
-- To build: Xcode 15.4 or later (Swift 5.10) and XcodeGen (`brew install xcodegen`).
+### Download
+
+Download `ChargeGuard.dmg` from the [latest release](https://github.com/amir-codes/chargeguard/releases/latest),
+open it and drag ChargeGuard to Applications.
+
+ChargeGuard is open source but not notarized by Apple, because that needs a paid Developer ID. So macOS
+asks once, the first time you open it:
+
+1. Open ChargeGuard and close the warning.
+2. Open **System Settings → Privacy & Security** and click **Open Anyway** next to ChargeGuard, then
+   confirm with your password. The button shows for about an hour after the first attempt.
+
+Or remove the download flag in Terminal instead: `xattr -dr com.apple.quarantine /Applications/ChargeGuard.app`
+
+### Install from Terminal
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/amir-codes/chargeguard/main/scripts/install.sh | bash
+```
+
+[`scripts/install.sh`](scripts/install.sh) downloads the latest release from GitHub, checks its checksum and
+signature, copies ChargeGuard to /Applications and opens it. A download made with `curl` carries no
+quarantine flag, so there's no warning to click through. It doesn't use sudo: the helper is installed later
+from the app's first-run window. Read the script before running it; it's short.
+
+Options: `CHARGEGUARD_VERSION=v1.0.0` installs a specific release, `CHARGEGUARD_DIR=~/Applications`
+installs without an administrator account, and `CHARGEGUARD_OPEN=0` skips opening the app. Put them in
+front of `bash`.
+
+### Check a download
+
+Each release has a `ChargeGuard.dmg.sha256` next to the DMG. With both in one folder:
+`shasum -a 256 -c ChargeGuard.dmg.sha256`. Releases are built from this repository by the
+[Release workflow](.github/workflows/release.yml) on a GitHub-hosted Mac, so every DMG traces back to a
+public commit and a public build log.
 
 ## Build from source
 
@@ -130,8 +163,10 @@ make run-sim          # try it first: simulated battery, no helper, no SMC write
 | `make uninstall` | `sudo scripts/uninstall.sh` (restores charging first) |
 | `make dmg` | `build/ChargeGuard.dmg` |
 
-Signing uses an Apple Development certificate when one is in the keychain, otherwise ad-hoc. The hardened
-runtime is on. The helper and `chargectl` are copied into `ChargeGuard.app/Contents/MacOS/`, and the launchd
+To build from source you need Xcode 15.4 or later (Swift 5.10) and XcodeGen (`brew install xcodegen`).
+
+Signing uses an Apple Development certificate when one is in the keychain, otherwise ad-hoc;
+`make build IDENTITY=- TEAM=` forces ad-hoc, as releases do. The hardened runtime is on. The helper and `chargectl` are copied into `ChargeGuard.app/Contents/MacOS/`, and the launchd
 plist into `Contents/Library/LaunchDaemons/`, before the app is signed. The `.xcodeproj` is generated from
 `project.yml` and never committed. Only `make install-helper` and `make uninstall` use sudo.
 
@@ -207,6 +242,10 @@ only keys a probe confirmed present. It never writes while another charging tool
 CLI) is running. Every write is logged with its reason and a battery snapshot. Discharge never goes below
 5 %, calibration never below 10 %, and Heat Protection overrides everything else.
 
+Release builds are ad-hoc signed, so the helper can't pin its clients to a Team ID. It accepts only a validly
+signed `com.amir.chargeguard` app or `chargectl` at the expected path, which is weaker than a Team ID check.
+A Developer ID certificate would close that gap.
+
 If charging looks wrong:
 
 1. Menu bar pop-up → **Restore normal charging**, or `chargectl restore`.
@@ -273,7 +312,9 @@ uninstall before you drag ChargeGuard.app to the Trash. App preferences can be r
 - **[ChargeGuard](ChargeGuard)**: the SwiftUI menu bar app, Settings, Dashboard, App Intents and
   onboarding.
 - **[chargectl](chargectl)**: the command-line tool.
-- **[scripts](scripts)**: helper install and uninstall, DMG packaging and signing.
+- **[scripts](scripts)**: helper install and uninstall, DMG packaging, signing and the one-line installer
+  (`install.sh`).
+- **[.github](.github)**: the release workflow and the release notes template.
 - **[docs](docs)**: [PLAN](docs/PLAN.md), [SAFETY](docs/SAFETY.md),
   [TEST-CHECKLIST](docs/TEST-CHECKLIST.md), [SMC-KEYS](docs/SMC-KEYS.md) and
   [MAC-BUILD-NOTES](docs/MAC-BUILD-NOTES.md).
@@ -295,7 +336,20 @@ verifies every feature on real hardware. [`docs/PLAN.md`](docs/PLAN.md) tracks b
 | B2 | Read-only run: live battery data, `chargectl probe`, SMC-KEYS filled in | ✅ |
 | B3 | Helper installed, `chargectl restore`, Charge Limiter end to end | 🔄 in progress: 80 % held for 30 minutes |
 | B4–B10 | Every remaining feature verified on hardware | ⏳ |
-| B11 | Packaging: DMG, uninstall verified, final docs | ⏳ |
+| B11 | Packaging: DMG, uninstall verified, final docs | ⏳ (release workflow and installer ready) |
+
+### Releasing
+
+1. Set `MARKETING_VERSION` (and bump `CURRENT_PROJECT_VERSION`) in `project.yml` and commit.
+2. Tag and push: `git tag v1.0.0 && git push origin v1.0.0`. The tag must match `MARKETING_VERSION`.
+3. The [Release workflow](.github/workflows/release.yml) runs the unit tests, builds the ad-hoc signed app
+   and DMG on a GitHub-hosted Mac, and drafts a release with `ChargeGuard.dmg` and its checksum.
+4. Download the DMG from the draft and test it on a Mac, including the helper install from the first-run
+   window: registering the helper with an ad-hoc signed app hasn't been tested yet (the `sudo` fallback
+   script works either way). Then publish. Drafts don't count as the latest release,
+   so the website's download button and `install.sh` only see a release once it's published.
+
+**Actions → Release → Run workflow** builds the same DMG as a run artifact, without a release, for testing.
 
 ## Screenshots
 

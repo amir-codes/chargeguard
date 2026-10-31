@@ -1,0 +1,80 @@
+# Builds ChargeGuard on a GitHub-hosted Mac and drafts a release with the DMG and its checksum.
+#
+#   Release:  set MARKETING_VERSION in project.yml, commit, then `git tag v1.0.0 && git push origin v1.0.0`.
+#             The run drafts the release; download the DMG from the draft, test it, then publish.
+#             Drafts are invisible to /releases/latest, so nothing reaches users until you publish.
+#   Test run: Actions > Release > Run workflow builds the DMG and uploads it as a run artifact only.
+#
+# Release builds are ad-hoc signed: there is no Developer ID certificate, so the app is not notarized and
+# macOS asks once before the first launch (see README > Install). The workflow passes IDENTITY=- so a
+# local `make dmg` with an Apple Development certificate can't leak into a release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the app version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="$(sed -n 's/^ *MARKETING_VERSION: *"\(.*\)" *$/\1/p' project.yml | head -n 1)"
+          echo "project.yml MARKETING_VERSION: $version, tag: $GITHUB_REF_NAME"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match MARKETING_VERSION $version in project.yml"
+            exit 1
+          fi
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          xcodebuild -version
+
+      - name: Unit tests
+        run: make test
+
+      - name: Build the ad-hoc signed app and DMG
+        run: make dmg IDENTITY=- TEAM=
+
+      - name: Verify the signature and write the checksum
+        run: |
+          codesign --verify --deep --strict --verbose=2 build/ChargeGuard.app
+          codesign -dv build/ChargeGuard.app 2>&1 | grep -E "^(Identifier|Signature|TeamIdentifier)"
+          cd build
+          shasum -a 256 ChargeGuard.dmg > ChargeGuard.dmg.sha256
+          cat ChargeGuard.dmg.sha256
+
+      - name: Upload the build (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChargeGuard-${{ github.sha }}
+          path: |
+            build/ChargeGuard.dmg
+            build/ChargeGuard.dmg.sha256
+          if-no-files-found: error
+
+      - name: Draft the GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/ChargeGuard.dmg build/ChargeGuard.dmg.sha256 \
+            --draft \
+            --title "ChargeGuard ${GITHUB_REF_NAME#v}" \
+            --notes-file .github/release-notes.md \
+            --generate-notes
