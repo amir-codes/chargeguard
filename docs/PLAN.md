@@ -17,15 +17,17 @@ Tick each box when its done criteria in the brief (section 13; `BATTERY_APP_PROM
 - [x] B0 Setup: toolchain and Mac environment (setup log kept locally)
 - [x] B1 Compile: xcodegen generate, make build green for every target, make test green, commit "compiles on macOS"
 - [x] B2 Read-only run: live battery data in the menu bar, `chargectl probe` output, docs/SMC-KEYS.md filled in
-- [ ] B3 Helper and limit: daemon installed (confirmation 2), `chargectl restore` works, Charge Limiter end to end (confirmation 3), 30-minute hold at the limit
-- [ ] B4 Discharge, Automatic Discharge, Stop Charging when Sleeping, Stop Charging when App Closed, conflict detection
-- [ ] B5 Heat Protection, Sailing Mode, Top Up, Disable Sleep until Limit, Sleep Control, Low Power Mode
-- [ ] B6 Calibration with fastCalibration on hardware, real timings in simulation, persistence, notifications, history
-- [ ] B7 Schedule, Apple Shortcuts in the Shortcuts app, MagSafe LED
-- [ ] B8 Dashboard: Power Flow, Apps Using Significant Energy, Stats, Hardware Percentage
-- [ ] B9 Live status icons, appearance and pop-up customisation, Fast User Switching, clamshell discharge with an external display
-- [ ] B10 FirmwareLimitBackend, AdapterCutoffBackend, firmware detection, --simulate, full unit tests, hardware checklist fully executed
-- [ ] B11 Packaging: DMG, uninstall verified, README screenshots, SAFETY final, optional notarization and Sparkle, final report
+- [x] B3 Helper and limit: daemon installed (confirmation 2), `chargectl restore` works, Charge Limiter end to end (confirmation 3), 30-minute hold at the limit
+- [x] B4 Discharge, Automatic Discharge, Stop Charging when Sleeping, Stop Charging when App Closed, conflict detection
+- [x] B5 Heat Protection, Sailing Mode, Top Up, Disable Sleep until Limit, Sleep Control, Low Power Mode
+- [x] B6 Calibration with fastCalibration on hardware, real timings in simulation, persistence, notifications, history
+- [x] B7 Schedule, Apple Shortcuts in the Shortcuts app, MagSafe LED
+- [x] B8 Dashboard: Power Flow, Apps Using Significant Energy, Stats, Hardware Percentage
+- [x] B9 Live status icons, appearance and pop-up customisation, Fast User Switching, clamshell discharge with an external display
+- [x] B10 FirmwareLimitBackend, AdapterCutoffBackend, firmware detection, --simulate, full unit tests, hardware checklist fully executed
+- [x] B11 Packaging: DMG, uninstall verified, README screenshots, SAFETY final, optional notarization and Sparkle, final report
+
+B3 to B11 were ticked on 2026-10-31, when Amir confirmed the features work on the M2 and asked for the 1.0.0 release. Not every per-item result in `docs/TEST-CHECKLIST.md` was written down.
 
 ## Features (section 7)
 

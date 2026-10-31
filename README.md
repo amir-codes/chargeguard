@@ -18,15 +18,13 @@
   <img alt="SwiftUI" src="https://img.shields.io/badge/UI-SwiftUI-0A84FF">
   <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-33C761">
   <img alt="Every feature free" src="https://img.shields.io/badge/price-free%2C%20every%20feature-F4D43A">
-  <img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-FF9500">
+  <img alt="Latest release" src="https://img.shields.io/github/v/release/amir-codes/chargeguard?color=0E8F6F&label=release">
 </p>
 
-> [!WARNING]
-> **In development, no release yet.** ChargeGuard builds and passes its unit tests on a MacBook Air M2
-> (macOS 15.5). On that Mac the Charge Limiter has held the battery at 80 % through a 30-minute test, with
-> `CHTE` blocking charging the whole time. The other features are still being verified on hardware, phase
-> by phase. Until a release, try the interface safely with `make run-sim`. Progress is tracked in
-> [`docs/PLAN.md`](docs/PLAN.md) and [`docs/TEST-CHECKLIST.md`](docs/TEST-CHECKLIST.md).
+> [!NOTE]
+> **ChargeGuard 1.0** is tested on a MacBook Air M2 with macOS 15.5. It changes how your Mac charges, so read
+> [Safety](#safety) first: **Restore normal charging** in the menu, `chargectl restore` or a restart always
+> puts charging back to the macOS default.
 
 ChargeGuard is a battery-care menu bar app for Apple silicon MacBooks. Charging to 100 % every day is what
 wears a battery out, so ChargeGuard holds the charge at a limit you choose, discharges to that limit while
@@ -101,9 +99,6 @@ Plus notifications, a Settings window, a Dashboard window, a first-run wizard, s
 a command-line tool and a `--simulate` mode.
 
 ## Install
-
-There's no release yet; until the first one, [build from source](#build-from-source). Releases will work
-like this.
 
 **Requirements:** a MacBook with Apple silicon (Intel Macs show an "unsupported" screen) and macOS 14
 Sonoma or later.
@@ -333,9 +328,9 @@ verifies every feature on real hardware. [`docs/PLAN.md`](docs/PLAN.md) tracks b
 | B0 | Mac setup: toolchain and environment notes | ✅ |
 | B1 | Compiles: `make build` and `make test` green (133 Core and 4 System tests) | ✅ |
 | B2 | Read-only run: live battery data, `chargectl probe`, SMC-KEYS filled in | ✅ |
-| B3 | Helper installed, `chargectl restore`, Charge Limiter end to end | 🔄 in progress: 80 % held for 30 minutes |
-| B4–B10 | Every remaining feature verified on hardware | ⏳ |
-| B11 | Packaging: DMG, uninstall verified, final docs | ⏳ (release workflow and installer ready) |
+| B3 | Helper installed, `chargectl restore`, Charge Limiter end to end | ✅ |
+| B4–B10 | Every remaining feature verified on hardware | ✅ |
+| B11 | Packaging: DMG, release script and installer, final docs | ✅ |
 
 ### Releasing
 
