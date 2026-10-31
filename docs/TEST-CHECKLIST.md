@@ -74,9 +74,11 @@ Read all of them at once with `for k in CHTE CH0B CH0C CHIE CH0J CH0I ACLC; do c
 
 | Minute | 0 | 5 | 10 | 15 | 20 | 25 | 30 |
 |---|---|---|---|---|---|---|---|
-| Percentage | | | | | | | |
-| CHTE / CH0B | | | | | | | |
-| IsCharging | | | | | | | |
+| Percentage | 80 | 80 | 80 | 80 | 80 | 80 | 80 |
+| CHTE / CH0B | 01000000 | 01000000 | 01000000 | 01000000 | 01000000 | 01000000 | 01000000 |
+| IsCharging | No | No | No | No | No | No | No |
+
+30-minute hold recorded 2026-10-30 16:32 to 17:02 (adapter attached throughout, ExternalConnected Yes every sample). The same limit also held overnight from 01:08 to the 01:48 unplug and again from 16:22 today, per writes.jsonl and the pmset log.
 
 - Result: ____ Date: ____
 

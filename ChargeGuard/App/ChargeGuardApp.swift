@@ -63,12 +63,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 10) { exit(0) }
             return
         }
+        // Headless counterparts of the first-run window's "Install helper" button, for scripts and
+        // tests: --register-helper registers the SMAppService daemon (and opens Login Items when
+        // approval is needed), --helper-status only prints the status. Both exit at once.
+        if arguments.contains("--register-helper") || arguments.contains("--helper-status") {
+            let service = SMAppService.daemon(plistName: HelperProtocol.launchdPlistName)
+            var exitCode: Int32 = 0
+            if arguments.contains("--register-helper") {
+                do {
+                    try service.register()
+                } catch {
+                    FileHandle.standardError.write(Data("register failed: \(error.localizedDescription)\n".utf8))
+                    exitCode = 1
+                }
+            }
+            let status = service.status
+            print("helper status: \(Self.describe(status))")
+            if status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
+            exit(exitCode)
+        }
         guard MachineInfo.isAppleSilicon else { return }
         AppModel.shared.start()
+        // Development tool (only with --simulate): draw every window offscreen into PNGs and exit.
+        if let directory = SnapshotRenderer.requestedDirectory {
+            Task { @MainActor in
+                await SnapshotRenderer.run(model: AppModel.shared, directory: directory)
+                exit(0)
+            }
+        }
+    }
+
+    /// True for the maintenance flags above: no AppModel runs, so nothing to prepare on quit.
+    static var isHeadlessMaintenanceRun: Bool {
+        let arguments = CommandLine.arguments
+        return arguments.contains("--unregister-helper") || arguments.contains("--register-helper")
+            || arguments.contains("--helper-status")
+    }
+
+    static func describe(_ status: SMAppService.Status) -> String {
+        switch status {
+        case .notRegistered: return "notRegistered"
+        case .enabled: return "enabled"
+        case .requiresApproval: return "requiresApproval (allow ChargeGuard in System Settings > General > Login Items)"
+        case .notFound: return "notFound (helper or launchd plist missing from the bundle)"
+        @unknown default: return "unknown(\(status.rawValue))"
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        guard !CommandLine.arguments.contains("--unregister-helper") else { return }
+        guard !Self.isHeadlessMaintenanceRun else { return }
         AppModel.shared.prepareForQuit()
     }
 }
